@@ -10,6 +10,8 @@ import DatePicker from '@/components/ui/DatePicker';
 import TimePicker from '@/components/ui/TimePicker';
 import TextInput from '@/components/ui/TextInput';
 import NumberInput from '@/components/ui/NumberInput';
+import QuickPick from '@/components/ui/QuickPick';
+import VoiceFirstField from '@/components/ui/VoiceFirstField';
 import ToggleSwitch from '@/components/ui/ToggleSwitch';
 import BigButton from '@/components/ui/BigButton';
 import {
@@ -22,6 +24,16 @@ import {
 } from '@/lib/types/forms';
 import { calculateWorkOrderTotals, formatCurrency } from '@/lib/utils/calculations';
 import { sampleWorkOrder } from '@/lib/sampleData';
+import {
+  RECENT_JOBS,
+  COMMON_MATERIALS,
+  TIME_PRESETS_IN,
+  TIME_PRESETS_OUT,
+  TEMP_PRESETS,
+  RATE_PRESETS,
+  todayISO,
+  yesterdayISO,
+} from '@/lib/recents';
 import { Sun, CloudRain, Wind, Plus, AlertTriangle, Sparkles, X } from 'lucide-react';
 
 const TOTAL_STEPS = 8;
@@ -29,7 +41,7 @@ const TOTAL_STEPS = 8;
 const initialData: WorkOrderData = {
   formType: 'work-order',
   jobNumber: '',
-  date: '',
+  date: todayISO(),
   projectName: '',
   projectAddress: '',
   siteContact: '',
@@ -52,6 +64,29 @@ export default function WorkOrderWizard() {
   const wizard = useWizard<WorkOrderData>(initialData, TOTAL_STEPS);
   const [currentMaterial, setCurrentMaterial] = useState<WorkOrderMaterial>({ ...initialMaterial });
   const [currentLabor, setCurrentLabor] = useState<WorkOrderLabor>({ ...initialLabor });
+
+  const pickJob = (number: string) => {
+    const job = RECENT_JOBS.find(j => j.number === number);
+    if (job) {
+      wizard.setFormData(prev => ({
+        ...prev,
+        jobNumber: job.number,
+        projectName: job.name,
+        projectAddress: job.address || prev.projectAddress,
+      }));
+    } else {
+      wizard.setField('jobNumber', number);
+    }
+  };
+
+  const pickMaterial = (desc: string) => {
+    const m = COMMON_MATERIALS.find(x => x.description === desc);
+    setCurrentMaterial(prev => ({
+      ...prev,
+      description: m ? m.description : desc,
+      amount: m ? m.defaultAmount : prev.amount,
+    }));
+  };
 
   const saveMaterial = () => {
     if (currentMaterial.description) {
@@ -135,9 +170,9 @@ export default function WorkOrderWizard() {
       isLast={wizard.isLast}
       canProceed={canProceed()}
     >
-      {/* Step 0: Job info + form type */}
+      {/* Step 0: Form type + Job */}
       {wizard.currentStep === 0 && (
-        <div className="space-y-4">
+        <div className="space-y-5">
           <button
             onClick={loadSample}
             className="flex items-center gap-2 text-sm font-semibold text-primary underline-offset-4 hover:underline"
@@ -157,20 +192,35 @@ export default function WorkOrderWizard() {
             label={t('workorder.formType')}
             columns={3}
           />
-          <TextInput
+          <QuickPick
+            options={RECENT_JOBS.map(j => ({
+              value: j.number,
+              label: j.name,
+              sublabel: `#${j.number}`,
+            }))}
             value={wizard.formData.jobNumber}
-            onChange={(val) => wizard.setField('jobNumber', val)}
-            label={t('timecard.jobNumber')}
-          />
-          <TextInput
-            value={wizard.formData.projectName}
-            onChange={(val) => wizard.setField('projectName', val)}
-            label={t('workorder.projectName')}
+            onChange={pickJob}
+            label={t('common.recentJobs')}
+            columns={2}
+            otherSlot={
+              <>
+                <TextInput
+                  value={wizard.formData.jobNumber}
+                  onChange={(val) => wizard.setField('jobNumber', val)}
+                  label={t('timecard.jobNumber')}
+                />
+                <TextInput
+                  value={wizard.formData.projectName}
+                  onChange={(val) => wizard.setField('projectName', val)}
+                  label={t('workorder.projectName')}
+                />
+              </>
+            }
           />
         </div>
       )}
 
-      {/* Step 1: Address */}
+      {/* Step 1: Address + site contact */}
       {wizard.currentStep === 1 && (
         <div className="space-y-4">
           <h2 className="text-2xl font-bold">{t('workorder.whereIsJob')}</h2>
@@ -189,12 +239,23 @@ export default function WorkOrderWizard() {
 
       {/* Step 2: Date + Tech */}
       {wizard.currentStep === 2 && (
-        <div className="space-y-4">
+        <div className="space-y-5">
           <h2 className="text-2xl font-bold">{t('workorder.dateContact')}</h2>
-          <DatePicker
+          <QuickPick
+            options={[
+              { value: todayISO(), label: t('common.today') },
+              { value: yesterdayISO(), label: t('common.yesterday') },
+            ]}
             value={wizard.formData.date}
             onChange={(val) => wizard.setField('date', val)}
             label={t('common.date')}
+            columns={2}
+            otherSlot={
+              <DatePicker
+                value={wizard.formData.date}
+                onChange={(val) => wizard.setField('date', val)}
+              />
+            }
           />
           <SelectPicker
             options={EMPLOYEES.map(name => ({ value: name, label: name }))}
@@ -208,24 +269,40 @@ export default function WorkOrderWizard() {
 
       {/* Step 3: Time */}
       {wizard.currentStep === 3 && (
-        <div className="space-y-4">
+        <div className="space-y-5">
           <h2 className="text-2xl font-bold">{t('workorder.time')}</h2>
-          <TimePicker
+          <QuickPick
+            options={TIME_PRESETS_IN}
             value={wizard.formData.timeIn}
             onChange={(val) => wizard.setField('timeIn', val)}
             label={t('timecard.timeIn')}
+            columns={4}
+            otherSlot={
+              <TimePicker
+                value={wizard.formData.timeIn}
+                onChange={(val) => wizard.setField('timeIn', val)}
+              />
+            }
           />
-          <TimePicker
+          <QuickPick
+            options={TIME_PRESETS_OUT}
             value={wizard.formData.timeOut}
             onChange={(val) => wizard.setField('timeOut', val)}
             label={t('timecard.timeOut')}
+            columns={3}
+            otherSlot={
+              <TimePicker
+                value={wizard.formData.timeOut}
+                onChange={(val) => wizard.setField('timeOut', val)}
+              />
+            }
           />
         </div>
       )}
 
       {/* Step 4: Weather + Temp */}
       {wizard.currentStep === 4 && (
-        <div className="space-y-4">
+        <div className="space-y-5">
           <h2 className="text-2xl font-bold">{t('workorder.weather')}</h2>
           <SelectPicker
             options={[
@@ -237,29 +314,35 @@ export default function WorkOrderWizard() {
             onChange={(val) => wizard.setField('weather', val as WorkOrderWeather)}
             columns={3}
           />
-          <TextInput
+          <QuickPick
+            options={TEMP_PRESETS}
             value={wizard.formData.temperature}
             onChange={(val) => wizard.setField('temperature', val)}
             label={t('workorder.temperature')}
-            enableVoice={false}
+            columns={3}
+            otherSlot={
+              <TextInput
+                value={wizard.formData.temperature}
+                onChange={(val) => wizard.setField('temperature', val)}
+                enableVoice={false}
+              />
+            }
           />
         </div>
       )}
 
-      {/* Step 5: Scope */}
+      {/* Step 5: Scope — voice-first */}
       {wizard.currentStep === 5 && (
         <div className="space-y-4">
           <h2 className="text-2xl font-bold">{t('workorder.whatDidYouDo')}</h2>
-          <TextInput
+          <VoiceFirstField
             value={wizard.formData.scopeOfWork}
             onChange={(val) => wizard.setField('scopeOfWork', val)}
-            label={t('workorder.scope')}
-            multiline
           />
         </div>
       )}
 
-      {/* Step 6: Materials + Labor (combined to save a step) */}
+      {/* Step 6: Materials + Labor */}
       {wizard.currentStep === 6 && (
         <div className="space-y-6">
           {/* Materials */}
@@ -283,10 +366,19 @@ export default function WorkOrderWizard() {
                 ))}
               </div>
             )}
-            <TextInput
+            <QuickPick
+              options={COMMON_MATERIALS.map(m => ({ value: m.description, label: m.description }))}
               value={currentMaterial.description}
-              onChange={(val) => setCurrentMaterial(prev => ({ ...prev, description: val }))}
-              label={t('common.description')}
+              onChange={pickMaterial}
+              label={t('common.commonItems')}
+              columns={1}
+              otherSlot={
+                <TextInput
+                  value={currentMaterial.description}
+                  onChange={(val) => setCurrentMaterial(prev => ({ ...prev, description: val }))}
+                  label={t('common.description')}
+                />
+              }
             />
             <div className="grid grid-cols-2 gap-3">
               <NumberInput
@@ -336,22 +428,28 @@ export default function WorkOrderWizard() {
               label={t('workorder.technician')}
               columns={2}
             />
-            <div className="grid grid-cols-2 gap-3">
-              <NumberInput
-                value={currentLabor.hours}
-                onChange={(val) => setCurrentLabor(prev => ({ ...prev, hours: val }))}
-                label={t('common.hours')}
-                step={0.5}
-                suffix="h"
-              />
-              <NumberInput
-                value={currentLabor.rate}
-                onChange={(val) => setCurrentLabor(prev => ({ ...prev, rate: val }))}
-                label={t('common.rate')}
-                prefix="$"
-                step={5}
-              />
-            </div>
+            <NumberInput
+              value={currentLabor.hours}
+              onChange={(val) => setCurrentLabor(prev => ({ ...prev, hours: val }))}
+              label={t('common.hours')}
+              step={0.5}
+              suffix="h"
+            />
+            <QuickPick
+              options={RATE_PRESETS}
+              value={currentLabor.rate}
+              onChange={(val) => setCurrentLabor(prev => ({ ...prev, rate: val }))}
+              label={t('common.rate')}
+              columns={4}
+              otherSlot={
+                <NumberInput
+                  value={currentLabor.rate}
+                  onChange={(val) => setCurrentLabor(prev => ({ ...prev, rate: val }))}
+                  prefix="$"
+                  step={5}
+                />
+              }
+            />
             <BigButton onClick={saveLabor} variant="accent" icon={<Plus size={20} />}>
               {t('common.addMore')}
             </BigButton>
@@ -384,11 +482,9 @@ export default function WorkOrderWizard() {
             noIcon="✅"
           />
           {wizard.formData.hasProblems && (
-            <TextInput
+            <VoiceFirstField
               value={wizard.formData.problemDescription}
               onChange={(val) => wizard.setField('problemDescription', val)}
-              label={t('workorder.problemsDesc')}
-              multiline
             />
           )}
         </div>

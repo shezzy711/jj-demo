@@ -9,35 +9,42 @@ import SelectPicker from '@/components/ui/SelectPicker';
 import DatePicker from '@/components/ui/DatePicker';
 import TextInput from '@/components/ui/TextInput';
 import NumberInput from '@/components/ui/NumberInput';
+import QuickPick from '@/components/ui/QuickPick';
 import BigButton from '@/components/ui/BigButton';
 import { EMPLOYEES, type MileageData, type MileageEntry } from '@/lib/types/forms';
 import { sampleMileage } from '@/lib/sampleData';
+import {
+  RECENT_LOCATIONS,
+  nextFridayISO,
+  lastFridayISO,
+  todayISO,
+  yesterdayISO,
+} from '@/lib/recents';
 import { Plus, Sparkles } from 'lucide-react';
 
 const TOTAL_STEPS = 5;
 
 const initialData: MileageData = {
   employeeName: '',
-  weekEnding: '',
+  weekEnding: nextFridayISO(),
   entries: [],
 };
 
-const initialEntry: MileageEntry = {
-  date: '',
+const initialEntry = (date: string): MileageEntry => ({
+  date,
   startLocation: '',
   endLocation: '',
   totalMiles: 0,
-};
+});
 
 export default function MileageWizard() {
   const { t } = useLanguage();
   const wizard = useWizard<MileageData>(initialData, TOTAL_STEPS);
-  const [currentEntry, setCurrentEntry] = useState<MileageEntry>({ ...initialEntry });
+  const [currentEntry, setCurrentEntry] = useState<MileageEntry>(initialEntry(todayISO()));
 
   const updateEntry = <K extends keyof MileageEntry>(key: K, value: MileageEntry[K]) => {
     setCurrentEntry(prev => {
       const next = { ...prev, [key]: value };
-      // Auto-calc total miles from odometer if both are set
       if (
         (key === 'startOdometer' || key === 'endOdometer') &&
         typeof next.startOdometer === 'number' &&
@@ -56,7 +63,7 @@ export default function MileageWizard() {
         ...prev,
         entries: [...prev.entries, { ...currentEntry }],
       }));
-      setCurrentEntry({ ...initialEntry });
+      setCurrentEntry(initialEntry(todayISO()));
     }
   };
 
@@ -90,7 +97,7 @@ export default function MileageWizard() {
   };
 
   const addAnotherTrip = () => {
-    setCurrentEntry({ ...initialEntry });
+    setCurrentEntry(initialEntry(todayISO()));
     wizard.goToStep(2);
   };
 
@@ -133,10 +140,21 @@ export default function MileageWizard() {
       {wizard.currentStep === 1 && (
         <div className="space-y-4">
           <h2 className="text-2xl font-bold">{t('timecard.whatWeek')}</h2>
-          <p className="text-muted">{t('timecard.weekEnding')}</p>
-          <DatePicker
+          <QuickPick
+            options={[
+              { value: nextFridayISO(), label: t('common.thisFriday') },
+              { value: lastFridayISO(), label: t('common.lastFriday') },
+            ]}
             value={wizard.formData.weekEnding}
             onChange={(val) => wizard.setField('weekEnding', val)}
+            columns={2}
+            otherSlot={
+              <DatePicker
+                value={wizard.formData.weekEnding}
+                onChange={(val) => wizard.setField('weekEnding', val)}
+                label={t('timecard.weekEnding')}
+              />
+            }
           />
         </div>
       )}
@@ -145,27 +163,57 @@ export default function MileageWizard() {
       {wizard.currentStep === 2 && (
         <div className="space-y-4">
           <h2 className="text-2xl font-bold">{t('common.date')}</h2>
-          <DatePicker
+          <QuickPick
+            options={[
+              { value: todayISO(), label: t('common.today') },
+              { value: yesterdayISO(), label: t('common.yesterday') },
+            ]}
             value={currentEntry.date}
             onChange={(val) => updateEntry('date', val)}
+            columns={2}
+            otherSlot={
+              <DatePicker
+                value={currentEntry.date}
+                onChange={(val) => updateEntry('date', val)}
+              />
+            }
           />
         </div>
       )}
 
       {/* Step 3: Trip */}
       {wizard.currentStep === 3 && (
-        <div className="space-y-4">
+        <div className="space-y-5">
           <h2 className="text-2xl font-bold">{t('mileage.tripDetails')}</h2>
-          <TextInput
+
+          <QuickPick
+            options={RECENT_LOCATIONS.map(loc => ({ value: loc, label: loc }))}
             value={currentEntry.startLocation}
             onChange={(val) => updateEntry('startLocation', val)}
             label={t('mileage.startLocation')}
+            columns={1}
+            otherSlot={
+              <TextInput
+                value={currentEntry.startLocation}
+                onChange={(val) => updateEntry('startLocation', val)}
+              />
+            }
           />
-          <TextInput
+
+          <QuickPick
+            options={RECENT_LOCATIONS.map(loc => ({ value: loc, label: loc }))}
             value={currentEntry.endLocation}
             onChange={(val) => updateEntry('endLocation', val)}
             label={t('mileage.endLocation')}
+            columns={1}
+            otherSlot={
+              <TextInput
+                value={currentEntry.endLocation}
+                onChange={(val) => updateEntry('endLocation', val)}
+              />
+            }
           />
+
           <div className="grid grid-cols-2 gap-3">
             <NumberInput
               value={currentEntry.startOdometer ?? 0}

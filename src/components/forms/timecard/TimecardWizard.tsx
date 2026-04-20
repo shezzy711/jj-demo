@@ -9,18 +9,26 @@ import SelectPicker from '@/components/ui/SelectPicker';
 import DatePicker from '@/components/ui/DatePicker';
 import TimePicker from '@/components/ui/TimePicker';
 import TextInput from '@/components/ui/TextInput';
+import QuickPick from '@/components/ui/QuickPick';
 import ToggleSwitch from '@/components/ui/ToggleSwitch';
 import BigButton from '@/components/ui/BigButton';
 import { EMPLOYEES, type TimecardData, type TimecardEntry } from '@/lib/types/forms';
 import { calculateDailyHours, formatHours } from '@/lib/utils/calculations';
 import { sampleTimecard } from '@/lib/sampleData';
+import {
+  RECENT_JOBS,
+  TIME_PRESETS_IN,
+  TIME_PRESETS_OUT,
+  nextFridayISO,
+  lastFridayISO,
+} from '@/lib/recents';
 import { Plus, Sparkles } from 'lucide-react';
 
 const TOTAL_STEPS = 7;
 
 const initialData: TimecardData = {
   employeeName: '',
-  weekEnding: '',
+  weekEnding: nextFridayISO(),
   entries: [],
 };
 
@@ -62,6 +70,15 @@ export default function TimecardWizard() {
       }
       return updated;
     });
+  };
+
+  const pickJob = (number: string) => {
+    const job = RECENT_JOBS.find(j => j.number === number);
+    setCurrentEntry(prev => ({
+      ...prev,
+      jobNumber: job ? job.number : number,
+      jobName: job ? job.name : prev.jobName,
+    }));
   };
 
   const commitEntry = () => {
@@ -149,10 +166,21 @@ export default function TimecardWizard() {
       {wizard.currentStep === 1 && (
         <div className="space-y-4">
           <h2 className="text-2xl font-bold">{t('timecard.whatWeek')}</h2>
-          <p className="text-muted">{t('timecard.weekEnding')}</p>
-          <DatePicker
+          <QuickPick
+            options={[
+              { value: nextFridayISO(), label: t('common.thisFriday') },
+              { value: lastFridayISO(), label: t('common.lastFriday') },
+            ]}
             value={wizard.formData.weekEnding}
             onChange={(val) => wizard.setField('weekEnding', val)}
+            columns={2}
+            otherSlot={
+              <DatePicker
+                value={wizard.formData.weekEnding}
+                onChange={(val) => wizard.setField('weekEnding', val)}
+                label={t('timecard.weekEnding')}
+              />
+            }
           />
         </div>
       )}
@@ -173,37 +201,70 @@ export default function TimecardWizard() {
         </div>
       )}
 
-      {/* Step 3: Job */}
+      {/* Step 3: Job — recent jobs as big buttons */}
       {wizard.currentStep === 3 && (
         <div className="space-y-4">
           <h2 className="text-2xl font-bold">{t('timecard.jobInfo')}</h2>
-          <TextInput
+          <QuickPick
+            options={RECENT_JOBS.map(j => ({
+              value: j.number,
+              label: j.name,
+              sublabel: `#${j.number}`,
+            }))}
             value={currentEntry.jobNumber}
-            onChange={(val) => updateEntry('jobNumber', val)}
-            label={t('timecard.jobNumber')}
-          />
-          <TextInput
-            value={currentEntry.jobName}
-            onChange={(val) => updateEntry('jobName', val)}
-            label={t('timecard.jobName')}
+            onChange={pickJob}
+            columns={2}
+            otherSlot={
+              <>
+                <TextInput
+                  value={currentEntry.jobNumber}
+                  onChange={(val) => updateEntry('jobNumber', val)}
+                  label={t('timecard.jobNumber')}
+                />
+                <TextInput
+                  value={currentEntry.jobName}
+                  onChange={(val) => updateEntry('jobName', val)}
+                  label={t('timecard.jobName')}
+                />
+              </>
+            }
           />
         </div>
       )}
 
-      {/* Step 4: Time */}
+      {/* Step 4: Time — presets */}
       {wizard.currentStep === 4 && (
-        <div className="space-y-4">
+        <div className="space-y-6">
           <h2 className="text-2xl font-bold">{t('timecard.timeInOut')}</h2>
-          <TimePicker
+
+          <QuickPick
+            options={TIME_PRESETS_IN}
             value={currentEntry.timeIn}
             onChange={(val) => updateEntry('timeIn', val)}
             label={t('timecard.timeIn')}
+            columns={4}
+            otherSlot={
+              <TimePicker
+                value={currentEntry.timeIn}
+                onChange={(val) => updateEntry('timeIn', val)}
+              />
+            }
           />
-          <TimePicker
+
+          <QuickPick
+            options={TIME_PRESETS_OUT}
             value={currentEntry.timeOut}
             onChange={(val) => updateEntry('timeOut', val)}
             label={t('timecard.timeOut')}
+            columns={3}
+            otherSlot={
+              <TimePicker
+                value={currentEntry.timeOut}
+                onChange={(val) => updateEntry('timeOut', val)}
+              />
+            }
           />
+
           {currentEntry.timeIn && currentEntry.timeOut && (
             <div className="text-center text-xl font-bold text-primary py-2">
               {formatHours(calculateDailyHours(currentEntry.timeIn, currentEntry.timeOut, currentEntry.lunch))}

@@ -9,9 +9,20 @@ import SelectPicker from '@/components/ui/SelectPicker';
 import DatePicker from '@/components/ui/DatePicker';
 import TextInput from '@/components/ui/TextInput';
 import NumberInput from '@/components/ui/NumberInput';
+import QuickPick from '@/components/ui/QuickPick';
+import VoiceFirstField from '@/components/ui/VoiceFirstField';
 import BigButton from '@/components/ui/BigButton';
 import { EMPLOYEES, type RequisitionData, type MaterialItem, type ToolItem } from '@/lib/types/forms';
 import { sampleRequisition } from '@/lib/sampleData';
+import {
+  RECENT_JOBS,
+  COMMON_MATERIALS,
+  COMMON_TOOLS,
+  todayISO,
+  yesterdayISO,
+  tomorrowISO,
+  nextWeekISO,
+} from '@/lib/recents';
 import { Wrench, Package, Plus, Sparkles, X } from 'lucide-react';
 
 const TOTAL_STEPS = 7;
@@ -19,8 +30,8 @@ const TOTAL_STEPS = 7;
 const initialData: RequisitionData = {
   jobNumber: '',
   jobName: '',
-  originationDate: '',
-  projectStartDate: '',
+  originationDate: todayISO(),
+  projectStartDate: tomorrowISO(),
   projectAddress: '',
   foremanLead: '',
   materials: [],
@@ -47,6 +58,46 @@ export default function RequisitionWizard() {
   const wizard = useWizard<RequisitionData>(initialData, TOTAL_STEPS);
   const [currentMaterial, setCurrentMaterial] = useState<MaterialItem>({ ...initialMaterial });
   const [currentTool, setCurrentTool] = useState<ToolItem>({ ...initialTool });
+
+  const pickJob = (number: string) => {
+    const job = RECENT_JOBS.find(j => j.number === number);
+    if (job) {
+      wizard.setFormData(prev => ({
+        ...prev,
+        jobNumber: job.number,
+        jobName: job.name,
+        projectAddress: job.address || prev.projectAddress,
+      }));
+    } else {
+      wizard.setField('jobNumber', number);
+    }
+  };
+
+  const pickMaterial = (desc: string) => {
+    const m = COMMON_MATERIALS.find(x => x.description === desc);
+    if (m) {
+      setCurrentMaterial(prev => ({
+        ...prev,
+        description: m.description,
+        supplier: m.defaultSupplier || prev.supplier,
+      }));
+    } else {
+      setCurrentMaterial(prev => ({ ...prev, description: desc }));
+    }
+  };
+
+  const pickTool = (desc: string) => {
+    const tool = COMMON_TOOLS.find(x => x.description === desc);
+    if (tool) {
+      setCurrentTool(prev => ({
+        ...prev,
+        description: tool.description,
+        supplier: tool.defaultSupplier || prev.supplier,
+      }));
+    } else {
+      setCurrentTool(prev => ({ ...prev, description: desc }));
+    }
+  };
 
   const saveMaterial = () => {
     if (currentMaterial.description) {
@@ -125,7 +176,7 @@ export default function RequisitionWizard() {
       isLast={wizard.isLast}
       canProceed={canProceed()}
     >
-      {/* Step 0: Job info */}
+      {/* Step 0: Job */}
       {wizard.currentStep === 0 && (
         <div className="space-y-4">
           <button
@@ -136,32 +187,68 @@ export default function RequisitionWizard() {
             {t('common.tryDemo')}
           </button>
           <h2 className="text-2xl font-bold">{t('requisition.jobInfo')}</h2>
-          <TextInput
+          <QuickPick
+            options={RECENT_JOBS.map(j => ({
+              value: j.number,
+              label: j.name,
+              sublabel: `#${j.number}`,
+            }))}
             value={wizard.formData.jobNumber}
-            onChange={(val) => wizard.setField('jobNumber', val)}
-            label={t('timecard.jobNumber')}
-          />
-          <TextInput
-            value={wizard.formData.jobName}
-            onChange={(val) => wizard.setField('jobName', val)}
-            label={t('timecard.jobName')}
+            onChange={pickJob}
+            columns={2}
+            otherSlot={
+              <>
+                <TextInput
+                  value={wizard.formData.jobNumber}
+                  onChange={(val) => wizard.setField('jobNumber', val)}
+                  label={t('timecard.jobNumber')}
+                />
+                <TextInput
+                  value={wizard.formData.jobName}
+                  onChange={(val) => wizard.setField('jobName', val)}
+                  label={t('timecard.jobName')}
+                />
+              </>
+            }
           />
         </div>
       )}
 
       {/* Step 1: Dates */}
       {wizard.currentStep === 1 && (
-        <div className="space-y-4">
+        <div className="space-y-6">
           <h2 className="text-2xl font-bold">{t('requisition.dates')}</h2>
-          <DatePicker
+          <QuickPick
+            options={[
+              { value: todayISO(), label: t('common.today') },
+              { value: yesterdayISO(), label: t('common.yesterday') },
+            ]}
             value={wizard.formData.originationDate}
             onChange={(val) => wizard.setField('originationDate', val)}
             label={t('requisition.originDate')}
+            columns={2}
+            otherSlot={
+              <DatePicker
+                value={wizard.formData.originationDate}
+                onChange={(val) => wizard.setField('originationDate', val)}
+              />
+            }
           />
-          <DatePicker
+          <QuickPick
+            options={[
+              { value: tomorrowISO(), label: t('common.tomorrow') },
+              { value: nextWeekISO(), label: t('common.nextWeek') },
+            ]}
             value={wizard.formData.projectStartDate}
             onChange={(val) => wizard.setField('projectStartDate', val)}
             label={t('requisition.startDate')}
+            columns={2}
+            otherSlot={
+              <DatePicker
+                value={wizard.formData.projectStartDate}
+                onChange={(val) => wizard.setField('projectStartDate', val)}
+              />
+            }
           />
         </div>
       )}
@@ -216,26 +303,40 @@ export default function RequisitionWizard() {
               ))}
             </div>
           )}
-          <TextInput
+
+          <QuickPick
+            options={COMMON_MATERIALS.map(m => ({ value: m.description, label: m.description }))}
             value={currentMaterial.description}
-            onChange={(val) => setCurrentMaterial(prev => ({ ...prev, description: val }))}
-            label={t('common.description')}
+            onChange={pickMaterial}
+            label={t('common.commonItems')}
+            columns={1}
+            otherSlot={
+              <TextInput
+                value={currentMaterial.description}
+                onChange={(val) => setCurrentMaterial(prev => ({ ...prev, description: val }))}
+                label={t('common.description')}
+              />
+            }
           />
-          <NumberInput
-            value={currentMaterial.quantity}
-            onChange={(val) => setCurrentMaterial(prev => ({ ...prev, quantity: val }))}
-            label={t('common.quantity')}
-            min={1}
-          />
-          <SelectPicker
-            options={[
-              { value: 'inventory', label: t('requisition.inventory') },
-              { value: 'order', label: t('requisition.orderNew') },
-            ]}
-            value={currentMaterial.source}
-            onChange={(val) => setCurrentMaterial(prev => ({ ...prev, source: val as 'inventory' | 'order' }))}
-            label={t('requisition.source')}
-          />
+
+          <div className="grid grid-cols-2 gap-3">
+            <NumberInput
+              value={currentMaterial.quantity}
+              onChange={(val) => setCurrentMaterial(prev => ({ ...prev, quantity: val }))}
+              label={t('common.quantity')}
+              min={1}
+            />
+            <SelectPicker
+              options={[
+                { value: 'inventory', label: t('requisition.inventory') },
+                { value: 'order', label: t('requisition.orderNew') },
+              ]}
+              value={currentMaterial.source}
+              onChange={(val) => setCurrentMaterial(prev => ({ ...prev, source: val as 'inventory' | 'order' }))}
+              label={t('requisition.source')}
+              columns={2}
+            />
+          </div>
           <TextInput
             value={currentMaterial.supplier}
             onChange={(val) => setCurrentMaterial(prev => ({ ...prev, supplier: val }))}
@@ -272,11 +373,22 @@ export default function RequisitionWizard() {
               ))}
             </div>
           )}
-          <TextInput
+
+          <QuickPick
+            options={COMMON_TOOLS.map(tool => ({ value: tool.description, label: tool.description }))}
             value={currentTool.description}
-            onChange={(val) => setCurrentTool(prev => ({ ...prev, description: val }))}
-            label={t('common.description')}
+            onChange={pickTool}
+            label={t('common.commonItems')}
+            columns={1}
+            otherSlot={
+              <TextInput
+                value={currentTool.description}
+                onChange={(val) => setCurrentTool(prev => ({ ...prev, description: val }))}
+                label={t('common.description')}
+              />
+            }
           />
+
           <NumberInput
             value={currentTool.quantity}
             onChange={(val) => setCurrentTool(prev => ({ ...prev, quantity: val }))}
@@ -292,11 +404,6 @@ export default function RequisitionWizard() {
             onChange={(val) => setCurrentTool(prev => ({ ...prev, source: val as 'inventory' | 'order' }))}
             label={t('requisition.source')}
           />
-          <TextInput
-            value={currentTool.supplier}
-            onChange={(val) => setCurrentTool(prev => ({ ...prev, supplier: val }))}
-            label={t('common.supplier')}
-          />
           <BigButton onClick={saveTool} variant="accent" icon={<Plus size={20} />}>
             {t('common.addMore')}
           </BigButton>
@@ -307,14 +414,13 @@ export default function RequisitionWizard() {
       {wizard.currentStep === 6 && (
         <div className="space-y-4">
           <h2 className="text-2xl font-bold">{t('requisition.anythingElse')}</h2>
-          <TextInput
+          <VoiceFirstField
             value={wizard.formData.notes}
             onChange={(val) => wizard.setField('notes', val)}
-            label={t('common.notes')}
-            multiline
           />
         </div>
       )}
     </WizardShell>
   );
 }
+
