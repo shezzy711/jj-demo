@@ -4,7 +4,7 @@ import { useState } from 'react';
 import { useLanguage } from '@/lib/i18n/LanguageContext';
 import { useWizard } from '@/hooks/useWizard';
 import WizardShell from '@/components/wizard/WizardShell';
-import ConfirmationScreen from '@/components/ui/ConfirmationScreen';
+import TimecardReport from '@/components/report/TimecardReport';
 import SelectPicker from '@/components/ui/SelectPicker';
 import DatePicker from '@/components/ui/DatePicker';
 import TimePicker from '@/components/ui/TimePicker';
@@ -12,10 +12,11 @@ import TextInput from '@/components/ui/TextInput';
 import ToggleSwitch from '@/components/ui/ToggleSwitch';
 import BigButton from '@/components/ui/BigButton';
 import { EMPLOYEES, type TimecardData, type TimecardEntry } from '@/lib/types/forms';
-import { calculateDailyHours, calculateTimecardTotal, formatHours } from '@/lib/utils/calculations';
-import { User, Plus } from 'lucide-react';
+import { calculateDailyHours, formatHours } from '@/lib/utils/calculations';
+import { sampleTimecard } from '@/lib/sampleData';
+import { Plus, Sparkles } from 'lucide-react';
 
-const TOTAL_STEPS = 6;
+const TOTAL_STEPS = 7;
 
 const initialData: TimecardData = {
   employeeName: '',
@@ -63,15 +64,19 @@ export default function TimecardWizard() {
     });
   };
 
-  const saveCurrentEntry = () => {
-    if (currentEntry.dayOfWeek) {
+  const commitEntry = () => {
+    if (currentEntry.dayOfWeek && currentEntry.timeIn && currentEntry.timeOut) {
       wizard.setFormData(prev => ({
         ...prev,
         entries: [...prev.entries, { ...currentEntry }],
       }));
       setCurrentEntry({ ...initialEntry });
-      wizard.goToStep(2); // back to pick day
     }
+  };
+
+  const loadSample = () => {
+    wizard.setFormData(sampleTimecard);
+    wizard.setIsComplete(true);
   };
 
   const canProceed = () => {
@@ -82,59 +87,31 @@ export default function TimecardWizard() {
       case 3: return !!currentEntry.jobNumber || !!currentEntry.jobName;
       case 4: return !!currentEntry.timeIn && !!currentEntry.timeOut;
       case 5: return true;
+      case 6: return wizard.formData.entries.length > 0;
       default: return true;
     }
   };
 
   const handleNext = () => {
+    if (wizard.currentStep === 5) {
+      commitEntry();
+      wizard.goNext();
+      return;
+    }
     if (wizard.isLast) {
-      // Save final entry and complete
-      if (currentEntry.dayOfWeek) {
-        wizard.setFormData(prev => ({
-          ...prev,
-          entries: [...prev.entries, { ...currentEntry }],
-        }));
-      }
       wizard.setIsComplete(true);
     } else {
       wizard.goNext();
     }
   };
 
+  const addAnotherDay = () => {
+    setCurrentEntry({ ...initialEntry });
+    wizard.goToStep(2);
+  };
+
   if (wizard.isComplete) {
-    const totalHours = calculateTimecardTotal(wizard.formData.entries);
-    return (
-      <ConfirmationScreen title={t('timecard.title')} onReset={wizard.reset}>
-        <div className="space-y-4">
-          <div className="flex justify-between text-lg">
-            <span className="font-medium">{t('timecard.who')}</span>
-            <span className="font-bold">{wizard.formData.employeeName}</span>
-          </div>
-          <div className="flex justify-between text-lg">
-            <span className="font-medium">{t('timecard.weekEnding')}</span>
-            <span className="font-bold">{wizard.formData.weekEnding}</span>
-          </div>
-          <hr className="border-border" />
-          {wizard.formData.entries.map((entry, i) => (
-            <div key={i} className="flex items-center justify-between py-2 border-b border-border last:border-0">
-              <div>
-                <p className="font-bold">{entry.dayOfWeek}</p>
-                <p className="text-sm text-muted">{entry.jobName || entry.jobNumber}</p>
-              </div>
-              <div className="text-right">
-                <p className="font-bold text-primary">{formatHours(entry.totalHours)}</p>
-                <p className="text-sm text-muted">{entry.timeIn} - {entry.timeOut}</p>
-              </div>
-            </div>
-          ))}
-          <hr className="border-border" />
-          <div className="flex justify-between text-xl">
-            <span className="font-bold">{t('timecard.totalHours')}</span>
-            <span className="font-bold text-primary">{formatHours(totalHours)}</span>
-          </div>
-        </div>
-      </ConfirmationScreen>
-    );
+    return <TimecardReport data={wizard.formData} onReset={wizard.reset} />;
   }
 
   return (
@@ -148,13 +125,17 @@ export default function TimecardWizard() {
       isLast={wizard.isLast}
       canProceed={canProceed()}
     >
-      {/* Step 0: Who are you? */}
+      {/* Step 0: Who */}
       {wizard.currentStep === 0 && (
         <div className="space-y-4">
-          <h2 className="text-2xl font-bold flex items-center gap-3">
-            <User size={28} className="text-primary" />
-            {t('timecard.who')}
-          </h2>
+          <button
+            onClick={loadSample}
+            className="flex items-center gap-2 text-sm font-semibold text-primary underline-offset-4 hover:underline"
+          >
+            <Sparkles size={16} />
+            {t('common.tryDemo')}
+          </button>
+          <h2 className="text-2xl font-bold">{t('timecard.who')}</h2>
           <SelectPicker
             options={EMPLOYEES.map(name => ({ value: name, label: name }))}
             value={wizard.formData.employeeName}
@@ -164,7 +145,7 @@ export default function TimecardWizard() {
         </div>
       )}
 
-      {/* Step 1: What week? */}
+      {/* Step 1: Week */}
       {wizard.currentStep === 1 && (
         <div className="space-y-4">
           <h2 className="text-2xl font-bold">{t('timecard.whatWeek')}</h2>
@@ -176,48 +157,40 @@ export default function TimecardWizard() {
         </div>
       )}
 
-      {/* Step 2: Pick a day */}
+      {/* Step 2: Day */}
       {wizard.currentStep === 2 && (
         <div className="space-y-4">
           <h2 className="text-2xl font-bold">{t('timecard.pickDay')}</h2>
-          {wizard.formData.entries.length > 0 && (
-            <div className="rounded-xl bg-success/10 p-3 text-sm text-success font-medium">
-              {wizard.formData.entries.length} {wizard.formData.entries.length === 1 ? 'day' : 'days'} logged
-            </div>
-          )}
           <SelectPicker
             options={DAYS.map(d => ({ value: d.value, label: t(d.key) }))}
             value={currentEntry.dayOfWeek}
             onChange={(val) => {
               updateEntry('dayOfWeek', val);
-              const dayDate = currentEntry.date;
-              if (!dayDate) updateEntry('date', wizard.formData.weekEnding);
+              if (!currentEntry.date) updateEntry('date', wizard.formData.weekEnding);
             }}
             columns={2}
           />
         </div>
       )}
 
-      {/* Step 3: Job info */}
+      {/* Step 3: Job */}
       {wizard.currentStep === 3 && (
         <div className="space-y-4">
           <h2 className="text-2xl font-bold">{t('timecard.jobInfo')}</h2>
           <TextInput
             value={currentEntry.jobNumber}
             onChange={(val) => updateEntry('jobNumber', val)}
-            placeholder={t('timecard.jobNumber')}
             label={t('timecard.jobNumber')}
           />
           <TextInput
             value={currentEntry.jobName}
             onChange={(val) => updateEntry('jobName', val)}
-            placeholder={t('timecard.jobName')}
             label={t('timecard.jobName')}
           />
         </div>
       )}
 
-      {/* Step 4: Time in & out */}
+      {/* Step 4: Time */}
       {wizard.currentStep === 4 && (
         <div className="space-y-4">
           <h2 className="text-2xl font-bold">{t('timecard.timeInOut')}</h2>
@@ -239,7 +212,7 @@ export default function TimecardWizard() {
         </div>
       )}
 
-      {/* Step 5: Lunch + Add Another */}
+      {/* Step 5: Lunch */}
       {wizard.currentStep === 5 && (
         <div className="space-y-6">
           <h2 className="text-2xl font-bold">{t('timecard.lunchTaken')}</h2>
@@ -251,16 +224,33 @@ export default function TimecardWizard() {
             yesIcon="🥪"
             noIcon="✖️"
           />
+        </div>
+      )}
 
-          <div className="pt-4">
-            <BigButton
-              onClick={saveCurrentEntry}
-              variant="accent"
-              icon={<Plus size={20} />}
-            >
-              {t('timecard.addDay')}
-            </BigButton>
+      {/* Step 6: Review */}
+      {wizard.currentStep === 6 && (
+        <div className="space-y-4">
+          <h2 className="text-2xl font-bold">{t('common.review')}</h2>
+          <div className="rounded-2xl border border-border bg-white">
+            {wizard.formData.entries.map((entry, i) => (
+              <div
+                key={i}
+                className="flex items-center justify-between border-b border-border px-4 py-3 last:border-0"
+              >
+                <div>
+                  <p className="font-bold">{entry.dayOfWeek}</p>
+                  <p className="text-sm text-muted">{entry.jobName || entry.jobNumber}</p>
+                </div>
+                <div className="text-right">
+                  <p className="font-bold text-primary">{formatHours(entry.totalHours)}</p>
+                  <p className="text-xs text-muted">{entry.timeIn} – {entry.timeOut}</p>
+                </div>
+              </div>
+            ))}
           </div>
+          <BigButton onClick={addAnotherDay} variant="outline" icon={<Plus size={20} />}>
+            {t('timecard.addDay')}
+          </BigButton>
         </div>
       )}
     </WizardShell>

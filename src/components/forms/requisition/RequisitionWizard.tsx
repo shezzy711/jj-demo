@@ -4,14 +4,15 @@ import { useState } from 'react';
 import { useLanguage } from '@/lib/i18n/LanguageContext';
 import { useWizard } from '@/hooks/useWizard';
 import WizardShell from '@/components/wizard/WizardShell';
-import ConfirmationScreen from '@/components/ui/ConfirmationScreen';
+import RequisitionReport from '@/components/report/RequisitionReport';
 import SelectPicker from '@/components/ui/SelectPicker';
 import DatePicker from '@/components/ui/DatePicker';
 import TextInput from '@/components/ui/TextInput';
 import NumberInput from '@/components/ui/NumberInput';
 import BigButton from '@/components/ui/BigButton';
 import { EMPLOYEES, type RequisitionData, type MaterialItem, type ToolItem } from '@/lib/types/forms';
-import { Wrench, Package, Plus } from 'lucide-react';
+import { sampleRequisition } from '@/lib/sampleData';
+import { Wrench, Package, Plus, Sparkles, X } from 'lucide-react';
 
 const TOTAL_STEPS = 7;
 
@@ -57,6 +58,13 @@ export default function RequisitionWizard() {
     }
   };
 
+  const removeMaterial = (i: number) => {
+    wizard.setFormData(prev => ({
+      ...prev,
+      materials: prev.materials.filter((_, idx) => idx !== i),
+    }));
+  };
+
   const saveTool = () => {
     if (currentTool.description) {
       wizard.setFormData(prev => ({
@@ -65,6 +73,18 @@ export default function RequisitionWizard() {
       }));
       setCurrentTool({ ...initialTool });
     }
+  };
+
+  const removeTool = (i: number) => {
+    wizard.setFormData(prev => ({
+      ...prev,
+      tools: prev.tools.filter((_, idx) => idx !== i),
+    }));
+  };
+
+  const loadSample = () => {
+    wizard.setFormData(sampleRequisition);
+    wizard.setIsComplete(true);
   };
 
   const canProceed = () => {
@@ -81,12 +101,8 @@ export default function RequisitionWizard() {
   };
 
   const handleNext = () => {
-    if (wizard.currentStep === 4 && currentMaterial.description) {
-      saveMaterial();
-    }
-    if (wizard.currentStep === 5 && currentTool.description) {
-      saveTool();
-    }
+    if (wizard.currentStep === 4 && currentMaterial.description) saveMaterial();
+    if (wizard.currentStep === 5 && currentTool.description) saveTool();
     if (wizard.isLast) {
       wizard.setIsComplete(true);
     } else {
@@ -95,68 +111,7 @@ export default function RequisitionWizard() {
   };
 
   if (wizard.isComplete) {
-    return (
-      <ConfirmationScreen title={t('requisition.title')} onReset={wizard.reset}>
-        <div className="space-y-4">
-          <div className="flex justify-between">
-            <span className="text-muted">{t('timecard.jobNumber')}</span>
-            <span className="font-bold">{wizard.formData.jobNumber}</span>
-          </div>
-          <div className="flex justify-between">
-            <span className="text-muted">{t('timecard.jobName')}</span>
-            <span className="font-bold">{wizard.formData.jobName}</span>
-          </div>
-          <div className="flex justify-between">
-            <span className="text-muted">{t('requisition.address')}</span>
-            <span className="font-bold">{wizard.formData.projectAddress}</span>
-          </div>
-          <div className="flex justify-between">
-            <span className="text-muted">{t('requisition.foreman')}</span>
-            <span className="font-bold">{wizard.formData.foremanLead}</span>
-          </div>
-
-          {wizard.formData.materials.length > 0 && (
-            <>
-              <hr className="border-border" />
-              <h3 className="font-bold text-lg flex items-center gap-2">
-                <Package size={18} /> {t('requisition.materials')}
-              </h3>
-              {wizard.formData.materials.map((m, i) => (
-                <div key={i} className="flex justify-between py-1 border-b border-border last:border-0">
-                  <span>{m.description}</span>
-                  <span className="font-bold">x{m.quantity}</span>
-                </div>
-              ))}
-            </>
-          )}
-
-          {wizard.formData.tools.length > 0 && (
-            <>
-              <hr className="border-border" />
-              <h3 className="font-bold text-lg flex items-center gap-2">
-                <Wrench size={18} /> {t('requisition.tools')}
-              </h3>
-              {wizard.formData.tools.map((tool, i) => (
-                <div key={i} className="flex justify-between py-1 border-b border-border last:border-0">
-                  <span>{tool.description}</span>
-                  <span className="font-bold">x{tool.quantity}</span>
-                </div>
-              ))}
-            </>
-          )}
-
-          {wizard.formData.notes && (
-            <>
-              <hr className="border-border" />
-              <div>
-                <span className="text-muted text-sm">{t('common.notes')}</span>
-                <p className="font-medium mt-1">{wizard.formData.notes}</p>
-              </div>
-            </>
-          )}
-        </div>
-      </ConfirmationScreen>
-    );
+    return <RequisitionReport data={wizard.formData} onReset={wizard.reset} />;
   }
 
   return (
@@ -173,17 +128,22 @@ export default function RequisitionWizard() {
       {/* Step 0: Job info */}
       {wizard.currentStep === 0 && (
         <div className="space-y-4">
+          <button
+            onClick={loadSample}
+            className="flex items-center gap-2 text-sm font-semibold text-primary underline-offset-4 hover:underline"
+          >
+            <Sparkles size={16} />
+            {t('common.tryDemo')}
+          </button>
           <h2 className="text-2xl font-bold">{t('requisition.jobInfo')}</h2>
           <TextInput
             value={wizard.formData.jobNumber}
             onChange={(val) => wizard.setField('jobNumber', val)}
-            placeholder={t('timecard.jobNumber')}
             label={t('timecard.jobNumber')}
           />
           <TextInput
             value={wizard.formData.jobName}
             onChange={(val) => wizard.setField('jobName', val)}
-            placeholder={t('timecard.jobName')}
             label={t('timecard.jobName')}
           />
         </div>
@@ -213,7 +173,7 @@ export default function RequisitionWizard() {
           <TextInput
             value={wizard.formData.projectAddress}
             onChange={(val) => wizard.setField('projectAddress', val)}
-            placeholder={t('requisition.address')}
+            label={t('requisition.address')}
           />
         </div>
       )}
@@ -239,14 +199,26 @@ export default function RequisitionWizard() {
             {t('requisition.whatMaterials')}
           </h2>
           {wizard.formData.materials.length > 0 && (
-            <div className="rounded-xl bg-success/10 p-3 text-sm text-success font-medium">
-              {wizard.formData.materials.length} item{wizard.formData.materials.length !== 1 ? 's' : ''} added
+            <div className="space-y-2 rounded-2xl border border-border bg-white p-3">
+              {wizard.formData.materials.map((m, i) => (
+                <div key={i} className="flex items-center justify-between rounded-lg bg-gray-50 px-3 py-2">
+                  <div className="min-w-0">
+                    <p className="truncate font-medium">{m.description}</p>
+                    <p className="text-xs text-muted">×{m.quantity} · {m.supplier || '—'}</p>
+                  </div>
+                  <button
+                    onClick={() => removeMaterial(i)}
+                    className="ml-2 flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-full bg-white text-muted active:bg-gray-200"
+                  >
+                    <X size={16} />
+                  </button>
+                </div>
+              ))}
             </div>
           )}
           <TextInput
             value={currentMaterial.description}
             onChange={(val) => setCurrentMaterial(prev => ({ ...prev, description: val }))}
-            placeholder={t('common.description')}
             label={t('common.description')}
           />
           <NumberInput
@@ -267,7 +239,6 @@ export default function RequisitionWizard() {
           <TextInput
             value={currentMaterial.supplier}
             onChange={(val) => setCurrentMaterial(prev => ({ ...prev, supplier: val }))}
-            placeholder={t('common.supplier')}
             label={t('common.supplier')}
           />
           <BigButton onClick={saveMaterial} variant="accent" icon={<Plus size={20} />}>
@@ -284,14 +255,26 @@ export default function RequisitionWizard() {
             {t('requisition.whatTools')}
           </h2>
           {wizard.formData.tools.length > 0 && (
-            <div className="rounded-xl bg-success/10 p-3 text-sm text-success font-medium">
-              {wizard.formData.tools.length} tool{wizard.formData.tools.length !== 1 ? 's' : ''} added
+            <div className="space-y-2 rounded-2xl border border-border bg-white p-3">
+              {wizard.formData.tools.map((tool, i) => (
+                <div key={i} className="flex items-center justify-between rounded-lg bg-gray-50 px-3 py-2">
+                  <div className="min-w-0">
+                    <p className="truncate font-medium">{tool.description}</p>
+                    <p className="text-xs text-muted">×{tool.quantity} · {tool.supplier || '—'}</p>
+                  </div>
+                  <button
+                    onClick={() => removeTool(i)}
+                    className="ml-2 flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-full bg-white text-muted active:bg-gray-200"
+                  >
+                    <X size={16} />
+                  </button>
+                </div>
+              ))}
             </div>
           )}
           <TextInput
             value={currentTool.description}
             onChange={(val) => setCurrentTool(prev => ({ ...prev, description: val }))}
-            placeholder={t('common.description')}
             label={t('common.description')}
           />
           <NumberInput
@@ -300,10 +283,18 @@ export default function RequisitionWizard() {
             label={t('common.quantity')}
             min={1}
           />
+          <SelectPicker
+            options={[
+              { value: 'inventory', label: t('requisition.inventory') },
+              { value: 'order', label: t('requisition.orderNew') },
+            ]}
+            value={currentTool.source}
+            onChange={(val) => setCurrentTool(prev => ({ ...prev, source: val as 'inventory' | 'order' }))}
+            label={t('requisition.source')}
+          />
           <TextInput
             value={currentTool.supplier}
             onChange={(val) => setCurrentTool(prev => ({ ...prev, supplier: val }))}
-            placeholder={t('common.supplier')}
             label={t('common.supplier')}
           />
           <BigButton onClick={saveTool} variant="accent" icon={<Plus size={20} />}>
@@ -319,7 +310,7 @@ export default function RequisitionWizard() {
           <TextInput
             value={wizard.formData.notes}
             onChange={(val) => wizard.setField('notes', val)}
-            placeholder={t('common.notes')}
+            label={t('common.notes')}
             multiline
           />
         </div>

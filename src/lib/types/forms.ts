@@ -45,6 +45,8 @@ export interface MileageEntry {
   date: string;
   startLocation: string;
   endLocation: string;
+  startOdometer?: number;
+  endOdometer?: number;
   totalMiles: number;
 }
 
@@ -67,9 +69,12 @@ export interface WorkOrderLabor {
   rate: number;
 }
 
+export type WorkOrderFormType = 'work-order' | 'change-order' | 'estimate';
+export type WorkOrderWeather = 'sunny' | 'rainy' | 'windy';
+
 export interface WorkOrderData {
+  formType: WorkOrderFormType;
   jobNumber: string;
-  jobLocation: string;
   date: string;
   projectName: string;
   projectAddress: string;
@@ -77,22 +82,36 @@ export interface WorkOrderData {
   technician: string;
   timeIn: string;
   timeOut: string;
-  weather: 'sunny' | 'rainy' | 'windy' | '';
+  weather?: WorkOrderWeather;
   temperature: string;
   scopeOfWork: string;
   materials: WorkOrderMaterial[];
   labor: WorkOrderLabor[];
   hasProblems: boolean;
   problemDescription: string;
-  techSignature: string;
-  customerSignature: string;
 }
 
 export const EMPLOYEES = [
-  'John F.', 'Carlos M.', 'Miguel R.', 'David S.', 'James T.',
-  'Robert H.', 'Luis G.', 'Jose P.', 'Mark W.', 'Anthony B.',
-  'Chris D.', 'Kevin L.', 'Brian K.', 'Jason N.', 'Ryan C.',
-  'Eric V.', 'Steven A.', 'Daniel O.', 'Andrew Z.', 'Other',
+  'John Feno',
+  'Carlos Martinez',
+  'Miguel Rodriguez',
+  'David Sanchez',
+  'James Thompson',
+  'Robert Hernandez',
+  'Luis Garcia',
+  'Jose Perez',
+  'Mark Williams',
+  'Anthony Brown',
+  'Chris Davis',
+  'Kevin Lopez',
+  'Brian Kim',
+  'Jason Nguyen',
+  'Ryan Cooper',
+  'Eric Vasquez',
+  'Steven Adams',
+  'Daniel Ortiz',
+  'Andrew Zhang',
+  'Other',
 ];
 
 export const MILEAGE_RATE = 0.725;

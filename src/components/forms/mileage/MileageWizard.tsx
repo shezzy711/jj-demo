@@ -4,17 +4,17 @@ import { useState } from 'react';
 import { useLanguage } from '@/lib/i18n/LanguageContext';
 import { useWizard } from '@/hooks/useWizard';
 import WizardShell from '@/components/wizard/WizardShell';
-import ConfirmationScreen from '@/components/ui/ConfirmationScreen';
+import MileageReport from '@/components/report/MileageReport';
 import SelectPicker from '@/components/ui/SelectPicker';
 import DatePicker from '@/components/ui/DatePicker';
 import TextInput from '@/components/ui/TextInput';
 import NumberInput from '@/components/ui/NumberInput';
 import BigButton from '@/components/ui/BigButton';
-import { EMPLOYEES, MILEAGE_RATE, type MileageData, type MileageEntry } from '@/lib/types/forms';
-import { calculateMileageTotal, calculateMileageReimbursement, formatCurrency } from '@/lib/utils/calculations';
-import { User, Plus, MapPin } from 'lucide-react';
+import { EMPLOYEES, type MileageData, type MileageEntry } from '@/lib/types/forms';
+import { sampleMileage } from '@/lib/sampleData';
+import { Plus, Sparkles } from 'lucide-react';
 
-const TOTAL_STEPS = 4;
+const TOTAL_STEPS = 5;
 
 const initialData: MileageData = {
   employeeName: '',
@@ -35,18 +35,34 @@ export default function MileageWizard() {
   const [currentEntry, setCurrentEntry] = useState<MileageEntry>({ ...initialEntry });
 
   const updateEntry = <K extends keyof MileageEntry>(key: K, value: MileageEntry[K]) => {
-    setCurrentEntry(prev => ({ ...prev, [key]: value }));
+    setCurrentEntry(prev => {
+      const next = { ...prev, [key]: value };
+      // Auto-calc total miles from odometer if both are set
+      if (
+        (key === 'startOdometer' || key === 'endOdometer') &&
+        typeof next.startOdometer === 'number' &&
+        typeof next.endOdometer === 'number' &&
+        next.endOdometer >= next.startOdometer
+      ) {
+        next.totalMiles = next.endOdometer - next.startOdometer;
+      }
+      return next;
+    });
   };
 
-  const saveCurrentEntry = () => {
-    if (currentEntry.startLocation && currentEntry.endLocation) {
+  const commitEntry = () => {
+    if (currentEntry.startLocation && currentEntry.endLocation && currentEntry.totalMiles > 0) {
       wizard.setFormData(prev => ({
         ...prev,
         entries: [...prev.entries, { ...currentEntry }],
       }));
-      setCurrentEntry({ ...initialEntry, date: currentEntry.date });
-      wizard.goToStep(2); // back to date/trip
+      setCurrentEntry({ ...initialEntry });
     }
+  };
+
+  const loadSample = () => {
+    wizard.setFormData(sampleMileage);
+    wizard.setIsComplete(true);
   };
 
   const canProceed = () => {
@@ -55,63 +71,31 @@ export default function MileageWizard() {
       case 1: return !!wizard.formData.weekEnding;
       case 2: return !!currentEntry.date;
       case 3: return !!currentEntry.startLocation && !!currentEntry.endLocation && currentEntry.totalMiles > 0;
+      case 4: return wizard.formData.entries.length > 0;
       default: return true;
     }
   };
 
   const handleNext = () => {
+    if (wizard.currentStep === 3) {
+      commitEntry();
+      wizard.goNext();
+      return;
+    }
     if (wizard.isLast) {
-      if (currentEntry.startLocation && currentEntry.endLocation) {
-        wizard.setFormData(prev => ({
-          ...prev,
-          entries: [...prev.entries, { ...currentEntry }],
-        }));
-      }
       wizard.setIsComplete(true);
     } else {
       wizard.goNext();
     }
   };
 
-  if (wizard.isComplete) {
-    const totalMiles = calculateMileageTotal(wizard.formData.entries);
-    const reimbursement = calculateMileageReimbursement(totalMiles);
+  const addAnotherTrip = () => {
+    setCurrentEntry({ ...initialEntry });
+    wizard.goToStep(2);
+  };
 
-    return (
-      <ConfirmationScreen title={t('mileage.title')} onReset={wizard.reset}>
-        <div className="space-y-4">
-          <div className="flex justify-between text-lg">
-            <span className="font-medium">{t('timecard.who')}</span>
-            <span className="font-bold">{wizard.formData.employeeName}</span>
-          </div>
-          <div className="flex justify-between text-lg">
-            <span className="font-medium">{t('timecard.weekEnding')}</span>
-            <span className="font-bold">{wizard.formData.weekEnding}</span>
-          </div>
-          <hr className="border-border" />
-          {wizard.formData.entries.map((entry, i) => (
-            <div key={i} className="flex items-center justify-between py-2 border-b border-border last:border-0">
-              <div>
-                <p className="text-sm text-muted">{entry.date}</p>
-                <p className="font-medium">{entry.startLocation}</p>
-                <p className="text-muted text-sm">→ {entry.endLocation}</p>
-              </div>
-              <span className="font-bold text-primary">{entry.totalMiles} mi</span>
-            </div>
-          ))}
-          <hr className="border-border" />
-          <div className="flex justify-between text-xl">
-            <span className="font-bold">{t('mileage.totalMiles')}</span>
-            <span className="font-bold text-primary">{totalMiles} mi</span>
-          </div>
-          <div className="flex justify-between text-xl">
-            <span className="font-bold">{t('mileage.reimbursement')}</span>
-            <span className="font-bold text-success">{formatCurrency(reimbursement)}</span>
-          </div>
-          <p className="text-sm text-muted text-right">{formatCurrency(MILEAGE_RATE)} {t('mileage.perMile')}</p>
-        </div>
-      </ConfirmationScreen>
-    );
+  if (wizard.isComplete) {
+    return <MileageReport data={wizard.formData} onReset={wizard.reset} />;
   }
 
   return (
@@ -125,13 +109,17 @@ export default function MileageWizard() {
       isLast={wizard.isLast}
       canProceed={canProceed()}
     >
-      {/* Step 0: Who are you? */}
+      {/* Step 0: Who */}
       {wizard.currentStep === 0 && (
         <div className="space-y-4">
-          <h2 className="text-2xl font-bold flex items-center gap-3">
-            <User size={28} className="text-primary" />
-            {t('timecard.who')}
-          </h2>
+          <button
+            onClick={loadSample}
+            className="flex items-center gap-2 text-sm font-semibold text-primary underline-offset-4 hover:underline"
+          >
+            <Sparkles size={16} />
+            {t('common.tryDemo')}
+          </button>
+          <h2 className="text-2xl font-bold">{t('timecard.who')}</h2>
           <SelectPicker
             options={EMPLOYEES.map(name => ({ value: name, label: name }))}
             value={wizard.formData.employeeName}
@@ -141,7 +129,7 @@ export default function MileageWizard() {
         </div>
       )}
 
-      {/* Step 1: What week? */}
+      {/* Step 1: Week */}
       {wizard.currentStep === 1 && (
         <div className="space-y-4">
           <h2 className="text-2xl font-bold">{t('timecard.whatWeek')}</h2>
@@ -153,15 +141,10 @@ export default function MileageWizard() {
         </div>
       )}
 
-      {/* Step 2: Pick a date */}
+      {/* Step 2: Date */}
       {wizard.currentStep === 2 && (
         <div className="space-y-4">
           <h2 className="text-2xl font-bold">{t('common.date')}</h2>
-          {wizard.formData.entries.length > 0 && (
-            <div className="rounded-xl bg-success/10 p-3 text-sm text-success font-medium">
-              {wizard.formData.entries.length} trip{wizard.formData.entries.length !== 1 ? 's' : ''} logged
-            </div>
-          )}
           <DatePicker
             value={currentEntry.date}
             onChange={(val) => updateEntry('date', val)}
@@ -169,25 +152,36 @@ export default function MileageWizard() {
         </div>
       )}
 
-      {/* Step 3: Trip details */}
+      {/* Step 3: Trip */}
       {wizard.currentStep === 3 && (
         <div className="space-y-4">
-          <h2 className="text-2xl font-bold flex items-center gap-3">
-            <MapPin size={28} className="text-primary" />
-            {t('mileage.tripDetails')}
-          </h2>
+          <h2 className="text-2xl font-bold">{t('mileage.tripDetails')}</h2>
           <TextInput
             value={currentEntry.startLocation}
             onChange={(val) => updateEntry('startLocation', val)}
-            placeholder={t('mileage.whereFrom')}
             label={t('mileage.startLocation')}
           />
           <TextInput
             value={currentEntry.endLocation}
             onChange={(val) => updateEntry('endLocation', val)}
-            placeholder={t('mileage.whereTo')}
             label={t('mileage.endLocation')}
           />
+          <div className="grid grid-cols-2 gap-3">
+            <NumberInput
+              value={currentEntry.startOdometer ?? 0}
+              onChange={(val) => updateEntry('startOdometer', val)}
+              label={t('mileage.startOdometer')}
+              step={1}
+              min={0}
+            />
+            <NumberInput
+              value={currentEntry.endOdometer ?? 0}
+              onChange={(val) => updateEntry('endOdometer', val)}
+              label={t('mileage.endOdometer')}
+              step={1}
+              min={0}
+            />
+          </div>
           <NumberInput
             value={currentEntry.totalMiles}
             onChange={(val) => updateEntry('totalMiles', val)}
@@ -195,15 +189,31 @@ export default function MileageWizard() {
             step={0.5}
             suffix=" mi"
           />
-          <div className="pt-2">
-            <BigButton
-              onClick={saveCurrentEntry}
-              variant="accent"
-              icon={<Plus size={20} />}
-            >
-              {t('mileage.addTrip')}
-            </BigButton>
+        </div>
+      )}
+
+      {/* Step 4: Review */}
+      {wizard.currentStep === 4 && (
+        <div className="space-y-4">
+          <h2 className="text-2xl font-bold">{t('common.review')}</h2>
+          <div className="rounded-2xl border border-border bg-white">
+            {wizard.formData.entries.map((entry, i) => (
+              <div
+                key={i}
+                className="border-b border-border px-4 py-3 last:border-0"
+              >
+                <div className="flex items-center justify-between">
+                  <p className="text-sm text-muted">{entry.date}</p>
+                  <p className="font-bold text-primary">{entry.totalMiles} mi</p>
+                </div>
+                <p className="font-medium">{entry.startLocation}</p>
+                <p className="text-sm text-muted">→ {entry.endLocation}</p>
+              </div>
+            ))}
           </div>
+          <BigButton onClick={addAnotherTrip} variant="outline" icon={<Plus size={20} />}>
+            {t('mileage.addTrip')}
+          </BigButton>
         </div>
       )}
     </WizardShell>
