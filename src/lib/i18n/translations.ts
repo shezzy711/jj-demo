@@ -56,6 +56,14 @@ export const translations: Record<string, { en: string; es: string }> = {
   'common.lastFriday': { en: 'Last Friday', es: 'Viernes Pasado' },
   'common.recentJobs': { en: 'Recent jobs', es: 'Trabajos recientes' },
   'common.commonItems': { en: 'Common items', es: 'Artículos comunes' },
+  'common.delete': { en: 'Delete', es: 'Eliminar' },
+  'common.editing': { en: 'Editing', es: 'Editando' },
+  'common.weekOf': { en: 'Week of', es: 'Semana del' },
+  'timecard.pickDays': { en: 'Tap the days you worked', es: 'Toca los días que trabajaste' },
+  'timecard.lunchTook': { en: 'Took 30 min lunch', es: 'Tomó 30 min de almuerzo' },
+  'timecard.daysSelected': { en: 'days selected', es: 'días seleccionados' },
+  'timecard.daySelected': { en: 'day selected', es: 'día seleccionado' },
+  'timecard.sameAsLast': { en: 'Pre-filled from your last entry', es: 'Pre-llenado de tu última entrada' },
 
   // Timecard
   'timecard.title': { en: 'Timecard', es: 'Tarjeta de Tiempo' },

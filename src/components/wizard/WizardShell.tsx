@@ -17,6 +17,7 @@ interface WizardShellProps {
   canProceed?: boolean;
   children: ReactNode;
   hideNav?: boolean;
+  hideBack?: boolean;
 }
 
 export default function WizardShell({
@@ -30,6 +31,7 @@ export default function WizardShell({
   canProceed = true,
   children,
   hideNav = false,
+  hideBack = false,
 }: WizardShellProps) {
   const { t } = useLanguage();
 
@@ -46,7 +48,7 @@ export default function WizardShell({
 
       {!hideNav && (
         <div className="sticky bottom-0 flex gap-3 bg-background px-5 py-4 border-t border-border">
-          {!isFirst && (
+          {!isFirst && !hideBack && (
             <button
               onClick={onBack}
               className="flex h-14 flex-1 items-center justify-center gap-2 rounded-2xl border-2 border-border bg-white text-lg font-semibold text-foreground active:bg-gray-50"
@@ -62,7 +64,7 @@ export default function WizardShell({
               flex h-14 items-center justify-center gap-2 rounded-2xl text-lg font-semibold text-white active:opacity-90
               disabled:opacity-40 disabled:pointer-events-none
               ${isLast ? 'bg-success' : 'bg-primary'}
-              ${isFirst ? 'flex-1' : 'flex-[2]'}
+              ${isFirst || hideBack ? 'flex-1' : 'flex-[2]'}
             `}
           >
             {isLast ? (
