@@ -298,7 +298,7 @@ export default function TimecardWizard({ user, onClose, onSubmit }: TimecardWiza
             }}>
               <span style={{ fontSize: 13.5, fontWeight: 600 }}>{tt('tc.weekTotal')}</span>
               <span style={{
-                fontSize: 22,
+                fontSize: 27,
                 fontWeight: 700,
                 fontVariantNumeric: 'tabular-nums',
               }}>
@@ -320,7 +320,7 @@ function Step({ title, children }: { title: string; children: React.ReactNode })
   return (
     <>
       <h2 style={{
-        fontSize: 22,
+        fontSize: 27,
         fontWeight: 700,
         letterSpacing: '-0.02em',
         margin: '0 0 18px 0',

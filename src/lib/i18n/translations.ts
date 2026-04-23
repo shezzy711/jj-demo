@@ -64,7 +64,8 @@ export const translations: Record<string, { en: string; es: string }> = {
   'pm.nav.employees':    { en: 'Employees', es: 'Empleados' },
   'pm.nav.jobs':         { en: 'Jobs', es: 'Trabajos' },
   'pm.nav.settings':     { en: 'Settings', es: 'Ajustes' },
-  'pm.openIPad':         { en: 'Open the iPad', es: 'Abrir el iPad' },
+  'view.office':         { en: 'Office view', es: 'Vista de oficina' },
+  'view.backToField':    { en: 'Back to field', es: 'Volver al campo' },
   'pm.profile':          { en: 'Office', es: 'Oficina' },
   'pm.profile.role':     { en: 'Project Manager', es: 'Gerente de Proyecto' },
 

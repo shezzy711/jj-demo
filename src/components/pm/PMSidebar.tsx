@@ -1,6 +1,6 @@
 'use client';
 
-import { Users, Briefcase, Settings, Tablet } from 'lucide-react';
+import { Users, Briefcase, Settings } from 'lucide-react';
 import JJLogoMark from '@/components/shared/JJLogoMark';
 import Avatar from '@/components/shared/Avatar';
 import { useLanguage } from '@/lib/i18n/LanguageContext';
@@ -13,10 +13,9 @@ export type PMSection = 'employees' | 'jobs' | 'settings';
 interface PMSidebarProps {
   section: PMSection;
   onSection: (section: PMSection) => void;
-  onOpenIPad: () => void;
 }
 
-export default function PMSidebar({ section, onSection, onOpenIPad }: PMSidebarProps) {
+export default function PMSidebar({ section, onSection }: PMSidebarProps) {
   const { t: tt } = useLanguage();
   const items = [
     { id: 'employees' as const, label: tt('pm.nav.employees'), icon: Users,     count: employees.length },
@@ -103,29 +102,6 @@ export default function PMSidebar({ section, onSection, onOpenIPad }: PMSidebarP
       </nav>
 
       <div style={{ flex: 1 }} />
-
-      <button
-        onClick={onOpenIPad}
-        style={{
-          display: 'flex',
-          alignItems: 'center',
-          gap: 10,
-          padding: '14px 16px',
-          marginBottom: 14,
-          borderRadius: 12,
-          background: t.accent,
-          border: 'none',
-          cursor: 'pointer',
-          fontSize: 14,
-          fontWeight: 700,
-          color: '#fff',
-          textAlign: 'left',
-          boxShadow: '0 6px 18px rgba(200,85,61,0.3)',
-        }}
-      >
-        <Tablet size={17} strokeWidth={2.2} />
-        <span style={{ flex: 1 }}>{tt('pm.openIPad')}</span>
-      </button>
 
       <div
         style={{

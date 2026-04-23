@@ -235,7 +235,7 @@ export default function MileageWizard({ user, onClose, onSubmit }: MileageWizard
                 <span style={{ fontSize: 13.5, fontWeight: 600, opacity: 0.85 }}>
                   {tt('mi.reimbursement')}
                 </span>
-                <span style={{ fontSize: 22, fontWeight: 700, fontVariantNumeric: 'tabular-nums' }}>
+                <span style={{ fontSize: 27, fontWeight: 700, fontVariantNumeric: 'tabular-nums' }}>
                   ${reimburse.toFixed(2)}
                 </span>
               </div>
@@ -255,7 +255,7 @@ function Step({ title, children }: { title: string; children: React.ReactNode })
   return (
     <>
       <h2 style={{
-        fontSize: 22,
+        fontSize: 27,
         fontWeight: 700,
         letterSpacing: '-0.02em',
         margin: '0 0 18px 0',

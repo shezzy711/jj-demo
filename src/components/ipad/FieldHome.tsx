@@ -2,6 +2,8 @@
 
 import { Clock, Car, Package, ClipboardList } from 'lucide-react';
 import BigTile from '@/components/shared/BigTile';
+import LangToggle from '@/components/shared/LangToggle';
+import Avatar from '@/components/shared/Avatar';
 import { useLanguage } from '@/lib/i18n/LanguageContext';
 import { format } from '@/lib/i18n/translations';
 import { theme as t } from '@/lib/theme';
@@ -29,24 +31,49 @@ export default function FieldHome({ greetingName, onPick }: FieldHomeProps) {
   ];
 
   return (
-    <div style={{ padding: '24px 24px 32px' }}>
-      <div style={{ marginBottom: 28 }}>
-        <div style={{ fontSize: 13, color: t.inkMuted, fontWeight: 500 }}>{today}</div>
-        <div
-          style={{
-            fontSize: 30,
-            fontWeight: 700,
-            letterSpacing: '-0.03em',
-            marginTop: 4,
-            lineHeight: 1.05,
-          }}
-        >
-          {format(tt('home.greeting'), { name: greetingName })}
+    <div style={{ padding: '22px 22px 28px' }}>
+      <div
+        style={{
+          display: 'flex',
+          alignItems: 'flex-start',
+          justifyContent: 'space-between',
+          gap: 12,
+          marginBottom: 22,
+        }}
+      >
+        <div style={{ flex: 1, minWidth: 0 }}>
+          <div style={{ fontSize: 13, color: t.inkMuted, fontWeight: 600 }}>{today}</div>
+          <div
+            style={{
+              fontSize: 34,
+              fontWeight: 700,
+              letterSpacing: '-0.03em',
+              marginTop: 4,
+              lineHeight: 1.05,
+            }}
+          >
+            {format(tt('home.greeting'), { name: greetingName })}
+          </div>
         </div>
-        <div style={{ fontSize: 14, color: t.inkLight, marginTop: 6 }}>{tt('home.pick')}</div>
+        <Avatar name={greetingName} size={48} tone="navy" />
       </div>
 
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 16 }}>
+        <div
+          style={{
+            fontSize: 12,
+            fontWeight: 700,
+            color: t.inkLight,
+            letterSpacing: '0.1em',
+            textTransform: 'uppercase',
+          }}
+        >
+          {tt('home.pick')}
+        </div>
+        <LangToggle />
+      </div>
+
+      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 14 }}>
         {tiles.map(tile => (
           <BigTile
             key={tile.kind}

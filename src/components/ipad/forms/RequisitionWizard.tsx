@@ -173,7 +173,7 @@ function Step({ title, children }: { title: string; children: React.ReactNode })
   return (
     <>
       <h2 style={{
-        fontSize: 22,
+        fontSize: 27,
         fontWeight: 700,
         letterSpacing: '-0.02em',
         margin: '0 0 18px 0',
