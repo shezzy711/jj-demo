@@ -1,13 +1,11 @@
 'use client';
 
-import { useState } from 'react';
+import { useRef, useState } from 'react';
 import { Sun, CloudRain, Wind, AlertCircle, Check } from 'lucide-react';
 import WizardHeader from '../steps/WizardHeader';
-import WizardFooter from '../steps/WizardFooter';
 import VoiceStep from '../steps/VoiceStep';
 import PhotosStep from '../steps/PhotosStep';
 import BigChoice from './shared/BigChoice';
-import StepDots from './shared/StepDots';
 import { useLanguage } from '@/lib/i18n/LanguageContext';
 import { theme as t } from '@/lib/theme';
 import {
@@ -33,7 +31,8 @@ interface WorkOrderWizardProps {
   onSubmit: (data: WorkOrderData) => void;
 }
 
-const TOTAL_STEPS = 7;
+const TOTAL_STEPS = 6;
+const ADVANCE_DELAY = 280;
 
 export default function WorkOrderWizard({ user, onClose, onSubmit }: WorkOrderWizardProps) {
   const { t: tt, lang } = useLanguage();
@@ -43,7 +42,6 @@ export default function WorkOrderWizard({ user, onClose, onSubmit }: WorkOrderWi
   const [jobNum, setJobNum] = useState('');
   const [projectName, setProjectName] = useState('');
   const [address, setAddress] = useState('');
-  const [date, setDate] = useState(todayISO());
   const [timeIn, setTimeIn] = useState('');
   const [timeOut, setTimeOut] = useState('');
   const [weather, setWeather] = useState<WorkOrderWeather | undefined>(undefined);
@@ -51,16 +49,32 @@ export default function WorkOrderWizard({ user, onClose, onSubmit }: WorkOrderWi
   const [scope, setScope] = useState('');
   const [materials, setMaterials] = useState<ParsedItem[]>([]);
   const [photos, setPhotos] = useState<{ caption: string; seed: number }[]>([]);
-  const [hasProblems, setHasProblems] = useState<boolean | null>(null);
 
-  const pickJob = (num: string) => {
-    const j = RECENT_JOBS.find(x => x.number === num);
-    setJobNum(num);
-    setProjectName(j?.name ?? '');
-    setAddress(j?.address ?? '');
+  const pendingRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const scheduleAdvance = (fn: () => void) => {
+    if (pendingRef.current) clearTimeout(pendingRef.current);
+    pendingRef.current = setTimeout(fn, ADVANCE_DELAY);
   };
 
-  const submit = () => {
+  const back = () => {
+    if (pendingRef.current) clearTimeout(pendingRef.current);
+    if (step === 0) onClose();
+    else setStep(s => s - 1);
+  };
+
+  // After all four selections on step 1, advance
+  const maybeAdvanceTimeWeather = (
+    nextTimeIn: string,
+    nextTimeOut: string,
+    nextWeather: WorkOrderWeather | undefined,
+    nextTemp: string,
+  ) => {
+    if (nextTimeIn && nextTimeOut && nextWeather && nextTemp) {
+      scheduleAdvance(() => setStep(2));
+    }
+  };
+
+  const submit = (hasProblems: boolean) => {
     const wMaterials: WorkOrderMaterial[] = materials.map(m => ({
       quantity: m.qty,
       description: m.name,
@@ -69,7 +83,7 @@ export default function WorkOrderWizard({ user, onClose, onSubmit }: WorkOrderWi
     onSubmit({
       formType,
       jobNumber: jobNum,
-      date,
+      date: todayISO(),
       projectName,
       projectAddress: address,
       siteContact: '',
@@ -81,18 +95,18 @@ export default function WorkOrderWizard({ user, onClose, onSubmit }: WorkOrderWi
       scopeOfWork: scope,
       materials: wMaterials,
       labor: [{
-        date,
+        date: todayISO(),
         technician: user.name,
         hours: 8,
         rate: user.rate,
       }],
-      hasProblems: !!hasProblems,
+      hasProblems,
       problemDescription: hasProblems ? SEEDED.problemNote[lang] : '',
     });
   };
 
-  // VoiceStep / PhotosStep render their own headers.
-  if (step === 3) {
+  // Voice / photo steps render their own UI
+  if (step === 2) {
     return (
       <VoiceStep
         title={tt('wo.scopeTitle')}
@@ -100,12 +114,12 @@ export default function WorkOrderWizard({ user, onClose, onSubmit }: WorkOrderWi
         mode="prose"
         seededTranscript={SEEDED.scope[lang]}
         existing={scope || null}
-        onSave={val => { setScope(val as string); setStep(4); }}
-        onClose={() => setStep(2)}
+        onSave={val => { setScope(val as string); setStep(3); }}
+        onClose={() => setStep(1)}
       />
     );
   }
-  if (step === 4) {
+  if (step === 3) {
     return (
       <VoiceStep
         title={tt('wo.materialsTitle')}
@@ -114,49 +128,30 @@ export default function WorkOrderWizard({ user, onClose, onSubmit }: WorkOrderWi
         withAmount
         seededItems={SEEDED.dwoMaterials}
         existing={materials.length > 0 ? materials : null}
-        onSave={val => { setMaterials(val as ParsedItem[]); setStep(5); }}
+        onSave={val => { setMaterials(val as ParsedItem[]); setStep(4); }}
+        onClose={() => setStep(2)}
+      />
+    );
+  }
+  if (step === 4) {
+    return (
+      <PhotosStep
+        existing={photos}
+        onSave={val => { setPhotos(val); setStep(5); }}
         onClose={() => setStep(3)}
       />
     );
   }
-  if (step === 5) {
-    return (
-      <PhotosStep
-        existing={photos}
-        onSave={val => { setPhotos(val); setStep(6); }}
-        onClose={() => setStep(4)}
-      />
-    );
-  }
-
-  const canNext = (() => {
-    switch (step) {
-      case 0: return !!jobNum;
-      case 1: return !!date;
-      case 2: return !!timeIn && !!timeOut && !!weather && !!temp;
-      case 6: return hasProblems !== null;
-      default: return true;
-    }
-  })();
-
-  const goNext = () => {
-    if (step === 6) { submit(); return; }
-    setStep(s => s + 1);
-  };
-  const goBack = () => {
-    if (step === 0) onClose();
-    else setStep(s => s - 1);
-  };
 
   return (
     <div style={{ height: '100%', display: 'flex', flexDirection: 'column', background: t.bg }}>
       <WizardHeader
         title={tt('home.tile.workorder')}
-        subtitle={`${tt('common.step')} ${step + 1} ${tt('common.of')} ${TOTAL_STEPS}`}
-        onClose={goBack}
+        step={step}
+        totalSteps={TOTAL_STEPS}
+        onClose={back}
       />
-      <div style={{ flex: 1, overflow: 'auto', padding: '20px 22px 130px' }}>
-        <StepDots current={step} total={TOTAL_STEPS} />
+      <div style={{ flex: 1, overflow: 'auto', padding: '24px 22px 24px' }}>
 
         {step === 0 && (
           <Step title={tt('wo.whichJob')}>
@@ -181,46 +176,28 @@ export default function WorkOrderWizard({ user, onClose, onSubmit }: WorkOrderWi
                 sublabel: `#${j.number}`,
               }))}
               value={jobNum}
-              onChange={pickJob}
+              onChange={val => {
+                const j = RECENT_JOBS.find(x => x.number === val);
+                setJobNum(val);
+                setProjectName(j?.name ?? '');
+                setAddress(j?.address ?? '');
+                scheduleAdvance(() => setStep(1));
+              }}
             />
           </Step>
         )}
 
         {step === 1 && (
-          <Step title={tt('wo.whichDay')}>
-            <BigChoice
-              columns={2}
-              options={[
-                { value: todayISO(), label: tt('common.today') },
-              ]}
-              value={date}
-              onChange={setDate}
-            />
-            <div style={{ height: 14 }} />
-            <Label text={tt('wo.tech')} />
-            <div
-              style={{
-                background: t.card,
-                border: `1.5px solid ${t.line}`,
-                borderRadius: 14,
-                padding: '14px 16px',
-                fontSize: 15,
-                fontWeight: 700,
-              }}
-            >
-              {user.name}
-            </div>
-          </Step>
-        )}
-
-        {step === 2 && (
           <Step title={tt('wo.timeWeather')}>
             <Label text={tt('wo.timeIn')} />
             <BigChoice
               columns={4}
               options={TIME_PRESETS_IN}
               value={timeIn}
-              onChange={setTimeIn}
+              onChange={val => {
+                setTimeIn(val);
+                maybeAdvanceTimeWeather(val, timeOut, weather, temp);
+              }}
             />
             <div style={{ height: 14 }} />
             <Label text={tt('wo.timeOut')} />
@@ -228,7 +205,10 @@ export default function WorkOrderWizard({ user, onClose, onSubmit }: WorkOrderWi
               columns={3}
               options={TIME_PRESETS_OUT}
               value={timeOut}
-              onChange={setTimeOut}
+              onChange={val => {
+                setTimeOut(val);
+                maybeAdvanceTimeWeather(timeIn, val, weather, temp);
+              }}
             />
             <div style={{ height: 14 }} />
             <Label text={tt('wo.weather')} />
@@ -242,7 +222,10 @@ export default function WorkOrderWizard({ user, onClose, onSubmit }: WorkOrderWi
                 return (
                   <button
                     key={opt.value}
-                    onClick={() => setWeather(opt.value as WorkOrderWeather)}
+                    onClick={() => {
+                      setWeather(opt.value as WorkOrderWeather);
+                      maybeAdvanceTimeWeather(timeIn, timeOut, opt.value as WorkOrderWeather, temp);
+                    }}
                     style={{
                       padding: '14px 12px',
                       minHeight: 70,
@@ -271,22 +254,25 @@ export default function WorkOrderWizard({ user, onClose, onSubmit }: WorkOrderWi
               columns={4}
               options={TEMP_PRESETS.slice(0, 4)}
               value={temp}
-              onChange={setTemp}
+              onChange={val => {
+                setTemp(val);
+                maybeAdvanceTimeWeather(timeIn, timeOut, weather, val);
+              }}
             />
           </Step>
         )}
 
-        {step === 6 && (
+        {step === 5 && (
           <Step title={tt('wo.anyProblems')}>
             <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
               <button
-                onClick={() => setHasProblems(false)}
+                onClick={() => submit(false)}
                 style={{
                   padding: 22,
                   borderRadius: 18,
-                  background: hasProblems === false ? t.success : t.card,
-                  color: hasProblems === false ? '#fff' : t.ink,
-                  border: `1.5px solid ${hasProblems === false ? t.success : t.line}`,
+                  background: t.success,
+                  color: '#fff',
+                  border: 'none',
                   cursor: 'pointer',
                   display: 'flex',
                   alignItems: 'center',
@@ -294,19 +280,20 @@ export default function WorkOrderWizard({ user, onClose, onSubmit }: WorkOrderWi
                   textAlign: 'left',
                   fontSize: 16,
                   fontWeight: 700,
+                  boxShadow: '0 6px 18px rgba(63,110,78,0.3)',
                 }}
               >
                 <Check size={24} strokeWidth={2.5} />
                 {tt('wo.noProblems')}
               </button>
               <button
-                onClick={() => setHasProblems(true)}
+                onClick={() => submit(true)}
                 style={{
                   padding: 22,
                   borderRadius: 18,
-                  background: hasProblems === true ? t.accent : t.card,
-                  color: hasProblems === true ? '#fff' : t.ink,
-                  border: `1.5px solid ${hasProblems === true ? t.accent : t.line}`,
+                  background: t.accent,
+                  color: '#fff',
+                  border: 'none',
                   cursor: 'pointer',
                   display: 'flex',
                   alignItems: 'center',
@@ -314,6 +301,7 @@ export default function WorkOrderWizard({ user, onClose, onSubmit }: WorkOrderWi
                   textAlign: 'left',
                   fontSize: 16,
                   fontWeight: 700,
+                  boxShadow: '0 6px 18px rgba(200,85,61,0.3)',
                 }}
               >
                 <AlertCircle size={24} strokeWidth={2.5} />
@@ -323,14 +311,6 @@ export default function WorkOrderWizard({ user, onClose, onSubmit }: WorkOrderWi
           </Step>
         )}
       </div>
-      <WizardFooter
-        onClose={goBack}
-        primaryLabel={step === 6 ? tt('common.submit') : tt('common.next')}
-        onPrimary={goNext}
-        primaryDisabled={!canNext}
-        secondaryLabel={step === 0 ? undefined : <>{tt('common.back')}</>}
-        onSecondary={step === 0 ? undefined : goBack}
-      />
     </div>
   );
 }

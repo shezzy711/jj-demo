@@ -1,11 +1,9 @@
 'use client';
 
-import { useState } from 'react';
+import { useRef, useState } from 'react';
 import WizardHeader from '../steps/WizardHeader';
-import WizardFooter from '../steps/WizardFooter';
 import VoiceStep from '../steps/VoiceStep';
 import BigChoice from './shared/BigChoice';
-import StepDots from './shared/StepDots';
 import { useLanguage } from '@/lib/i18n/LanguageContext';
 import { theme as t } from '@/lib/theme';
 import { RECENT_JOBS, todayISO, tomorrowISO } from '@/lib/recents';
@@ -26,6 +24,7 @@ interface RequisitionWizardProps {
 }
 
 const TOTAL_STEPS = 5;
+const ADVANCE_DELAY = 280;
 
 const FOREMEN = employees.filter(e => e.role === 'Foreman');
 
@@ -36,21 +35,24 @@ export default function RequisitionWizard({ user: _user, onClose, onSubmit }: Re
   const [jobNum, setJobNum] = useState('');
   const [jobName, setJobName] = useState('');
   const [address, setAddress] = useState('');
-  const [origDate, setOrigDate] = useState(todayISO());
-  const [startDate, setStartDate] = useState(tomorrowISO());
   const [foreman, setForeman] = useState('');
   const [materials, setMaterials] = useState<ParsedItem[]>([]);
   const [tools, setTools] = useState<ParsedItem[]>([]);
   const [notes, setNotes] = useState('');
 
-  const pickJob = (num: string) => {
-    const j = RECENT_JOBS.find(x => x.number === num);
-    setJobNum(num);
-    setJobName(j?.name ?? '');
-    setAddress(j?.address ?? '');
+  const pendingRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const scheduleAdvance = (fn: () => void) => {
+    if (pendingRef.current) clearTimeout(pendingRef.current);
+    pendingRef.current = setTimeout(fn, ADVANCE_DELAY);
   };
 
-  const submit = () => {
+  const back = () => {
+    if (pendingRef.current) clearTimeout(pendingRef.current);
+    if (step === 0) onClose();
+    else setStep(s => s - 1);
+  };
+
+  const submit = (latestNotes?: string) => {
     const matsForReport: MaterialItem[] = materials.map(m => ({
       quantity: m.qty,
       source: m.source === 'shop' ? 'inventory' : 'order',
@@ -66,17 +68,17 @@ export default function RequisitionWizard({ user: _user, onClose, onSubmit }: Re
     onSubmit({
       jobNumber: jobNum,
       jobName,
-      originationDate: origDate,
-      projectStartDate: startDate,
+      originationDate: todayISO(),
+      projectStartDate: tomorrowISO(),
       projectAddress: address,
       foremanLead: foreman,
       materials: matsForReport,
       tools: toolsForReport,
-      notes,
+      notes: latestNotes ?? notes,
     });
   };
 
-  // Steps using VoiceStep render their own header — wrap them differently.
+  // Voice steps render their own UI (header + footer)
   if (step === 2) {
     return (
       <VoiceStep
@@ -112,36 +114,25 @@ export default function RequisitionWizard({ user: _user, onClose, onSubmit }: Re
         mode="prose"
         seededTranscript={SEEDED.reqNotes[lang]}
         existing={notes || null}
-        onSave={val => { setNotes(val as string); submit(); }}
+        onSave={val => {
+          const next = val as string;
+          setNotes(next);
+          submit(next);
+        }}
         onClose={() => setStep(3)}
       />
     );
   }
 
-  const canNext = (() => {
-    switch (step) {
-      case 0: return !!jobNum;
-      case 1: return !!foreman;
-      default: return true;
-    }
-  })();
-
-  const goNext = () => setStep(s => s + 1);
-  const goBack = () => {
-    if (step === 0) onClose();
-    else setStep(s => s - 1);
-  };
-
   return (
     <div style={{ height: '100%', display: 'flex', flexDirection: 'column', background: t.bg }}>
       <WizardHeader
         title={tt('home.tile.requisition')}
-        subtitle={`${tt('common.step')} ${step + 1} ${tt('common.of')} ${TOTAL_STEPS}`}
-        onClose={goBack}
+        step={step}
+        totalSteps={TOTAL_STEPS}
+        onClose={back}
       />
-      <div style={{ flex: 1, overflow: 'auto', padding: '20px 22px 130px' }}>
-        <StepDots current={step} total={TOTAL_STEPS} />
-
+      <div style={{ flex: 1, overflow: 'auto', padding: '24px 22px 24px' }}>
         {step === 0 && (
           <Step title={tt('req.whichJob')}>
             <BigChoice
@@ -152,7 +143,13 @@ export default function RequisitionWizard({ user: _user, onClose, onSubmit }: Re
                 sublabel: `#${j.number}`,
               }))}
               value={jobNum}
-              onChange={pickJob}
+              onChange={val => {
+                const j = RECENT_JOBS.find(x => x.number === val);
+                setJobNum(val);
+                setJobName(j?.name ?? '');
+                setAddress(j?.address ?? '');
+                scheduleAdvance(() => setStep(1));
+              }}
             />
           </Step>
         )}
@@ -163,19 +160,11 @@ export default function RequisitionWizard({ user: _user, onClose, onSubmit }: Re
               columns={2}
               options={FOREMEN.map(f => ({ value: f.name, label: f.name }))}
               value={foreman}
-              onChange={setForeman}
+              onChange={val => { setForeman(val); scheduleAdvance(() => setStep(2)); }}
             />
           </Step>
         )}
       </div>
-      <WizardFooter
-        onClose={goBack}
-        primaryLabel={tt('common.next')}
-        onPrimary={goNext}
-        primaryDisabled={!canNext}
-        secondaryLabel={<>{tt('common.back')}</>}
-        onSecondary={goBack}
-      />
     </div>
   );
 }

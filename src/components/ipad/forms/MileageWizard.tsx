@@ -1,11 +1,10 @@
 'use client';
 
-import { useState } from 'react';
+import { useRef, useState } from 'react';
 import { Plus, Trash2 } from 'lucide-react';
 import WizardHeader from '../steps/WizardHeader';
-import WizardFooter from '../steps/WizardFooter';
 import BigChoice from './shared/BigChoice';
-import StepDots from './shared/StepDots';
+import { SubmitBar } from './TimecardWizard';
 import { useLanguage } from '@/lib/i18n/LanguageContext';
 import { theme as t } from '@/lib/theme';
 import {
@@ -14,6 +13,7 @@ import {
   lastFridayISO,
   todayISO,
   yesterdayISO,
+  mileageBetween,
 } from '@/lib/recents';
 import { MILEAGE_RATE } from '@/lib/types/forms';
 import type { Employee, MileageData, MileageEntry } from '@/lib/types/forms';
@@ -25,58 +25,48 @@ interface MileageWizardProps {
 }
 
 const TOTAL_STEPS = 4;
+const ADVANCE_DELAY = 280;
 
 export default function MileageWizard({ user, onClose, onSubmit }: MileageWizardProps) {
   const { t: tt } = useLanguage();
   const [step, setStep] = useState(0);
   const [weekEnding, setWeekEnding] = useState(nextFridayISO());
   const [entries, setEntries] = useState<MileageEntry[]>([]);
-
   const [date, setDate] = useState(todayISO());
   const [start, setStart] = useState('');
   const [end, setEnd] = useState('');
-  const [miles, setMiles] = useState('');
+  const [miles, setMiles] = useState(0);
 
-  const resetLeg = () => { setStart(''); setEnd(''); setMiles(''); setDate(todayISO()); };
+  const pendingRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const scheduleAdvance = (fn: () => void) => {
+    if (pendingRef.current) clearTimeout(pendingRef.current);
+    pendingRef.current = setTimeout(fn, ADVANCE_DELAY);
+  };
 
-  const commit = () => {
-    const m = Number(miles);
-    if (!start || !end || !m) return;
+  const back = () => {
+    if (pendingRef.current) clearTimeout(pendingRef.current);
+    if (step === 0) onClose();
+    else setStep(s => s - 1);
+  };
+
+  const commitAndReview = () => {
     setEntries(prev => [...prev, {
       date,
       startLocation: start,
       endLocation: end,
-      totalMiles: m,
+      totalMiles: miles,
     }]);
+    setStep(3);
+  };
+
+  const addAnother = () => {
+    setStart(''); setEnd(''); setMiles(0); setDate(todayISO());
+    setStep(1);
   };
 
   const submit = () => {
     onSubmit({ employeeName: user.name, weekEnding, entries });
   };
-
-  const canNext = (() => {
-    switch (step) {
-      case 0: return !!weekEnding;
-      case 1: return !!date;
-      case 2: return !!start && !!end && Number(miles) > 0;
-      case 3: return entries.length > 0;
-      default: return true;
-    }
-  })();
-
-  const goNext = () => {
-    if (step === 2) { commit(); setStep(3); return; }
-    if (step === 3) { submit(); return; }
-    setStep(s => s + 1);
-  };
-  const goBack = () => {
-    if (step === 0) onClose();
-    else setStep(s => s - 1);
-  };
-
-  const addAnother = () => { resetLeg(); setStep(1); };
-  const removeEntry = (i: number) =>
-    setEntries(prev => prev.filter((_, idx) => idx !== i));
 
   const total = entries.reduce((s, e) => s + e.totalMiles, 0);
   const reimburse = Math.round(total * MILEAGE_RATE * 100) / 100;
@@ -85,11 +75,11 @@ export default function MileageWizard({ user, onClose, onSubmit }: MileageWizard
     <div style={{ height: '100%', display: 'flex', flexDirection: 'column', background: t.bg }}>
       <WizardHeader
         title={tt('home.tile.mileage')}
-        subtitle={`${tt('common.step')} ${step + 1} ${tt('common.of')} ${TOTAL_STEPS}`}
-        onClose={goBack}
+        step={step}
+        totalSteps={TOTAL_STEPS}
+        onClose={back}
       />
-      <div style={{ flex: 1, overflow: 'auto', padding: '20px 22px 130px' }}>
-        <StepDots current={step} total={TOTAL_STEPS} />
+      <div style={{ flex: 1, overflow: 'auto', padding: '24px 22px 24px' }}>
 
         {step === 0 && (
           <Step title={tt('mi.whichWeek')}>
@@ -100,7 +90,7 @@ export default function MileageWizard({ user, onClose, onSubmit }: MileageWizard
                 { value: lastFridayISO(), label: tt('common.lastFriday') },
               ]}
               value={weekEnding}
-              onChange={setWeekEnding}
+              onChange={val => { setWeekEnding(val); scheduleAdvance(() => setStep(1)); }}
             />
           </Step>
         )}
@@ -110,11 +100,11 @@ export default function MileageWizard({ user, onClose, onSubmit }: MileageWizard
             <BigChoice
               columns={2}
               options={[
-                { value: todayISO(), label: tt('common.today') },
+                { value: todayISO(),     label: tt('common.today') },
                 { value: yesterdayISO(), label: tt('common.yesterday') },
               ]}
               value={date}
-              onChange={setDate}
+              onChange={val => { setDate(val); scheduleAdvance(() => setStep(2)); }}
             />
           </Step>
         )}
@@ -126,7 +116,14 @@ export default function MileageWizard({ user, onClose, onSubmit }: MileageWizard
               columns={1}
               options={RECENT_LOCATIONS.map(loc => ({ value: loc, label: loc }))}
               value={start}
-              onChange={setStart}
+              onChange={val => {
+                setStart(val);
+                if (val && end) {
+                  const auto = mileageBetween(val, end);
+                  setMiles(auto);
+                  scheduleAdvance(commitAndReview);
+                }
+              }}
             />
             <div style={{ height: 14 }} />
             <Label text={tt('mi.to')} />
@@ -134,28 +131,25 @@ export default function MileageWizard({ user, onClose, onSubmit }: MileageWizard
               columns={1}
               options={RECENT_LOCATIONS.map(loc => ({ value: loc, label: loc }))}
               value={end}
-              onChange={setEnd}
-            />
-            <div style={{ height: 14 }} />
-            <Label text={tt('mi.howMany')} />
-            <input
-              value={miles}
-              onChange={e => setMiles(e.target.value)}
-              inputMode="decimal"
-              placeholder="0.0"
-              style={{
-                width: '100%',
-                padding: '16px 18px',
-                borderRadius: 14,
-                border: `1.5px solid ${t.line}`,
-                background: t.card,
-                fontSize: 18,
-                fontVariantNumeric: 'tabular-nums',
-                color: t.ink,
-                outline: 'none',
-                fontWeight: 700,
+              onChange={val => {
+                setEnd(val);
+                if (start && val) {
+                  const auto = mileageBetween(start, val);
+                  setMiles(auto);
+                  scheduleAdvance(commitAndReview);
+                }
               }}
             />
+            {start && end && miles > 0 && (
+              <div style={{
+                marginTop: 14,
+                fontSize: 13,
+                color: t.inkLight,
+                textAlign: 'center',
+              }}>
+                ≈ {miles} mi
+              </div>
+            )}
           </Step>
         )}
 
@@ -183,7 +177,7 @@ export default function MileageWizard({ user, onClose, onSubmit }: MileageWizard
                     {e.totalMiles} mi
                   </div>
                   <button
-                    onClick={() => removeEntry(i)}
+                    onClick={() => setEntries(prev => prev.filter((_, idx) => idx !== i))}
                     style={{
                       width: 30,
                       height: 30,
@@ -229,45 +223,28 @@ export default function MileageWizard({ user, onClose, onSubmit }: MileageWizard
               borderRadius: 14,
               padding: 16,
             }}>
-              <div style={{
-                display: 'flex',
-                justifyContent: 'space-between',
-                alignItems: 'center',
-                marginBottom: 6,
-              }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 6 }}>
                 <span style={{ fontSize: 13.5, fontWeight: 600 }}>{tt('mi.totalMiles')}</span>
-                <span style={{
-                  fontSize: 18,
-                  fontWeight: 700,
-                  fontVariantNumeric: 'tabular-nums',
-                }}>{total.toFixed(1)} mi</span>
+                <span style={{ fontSize: 18, fontWeight: 700, fontVariantNumeric: 'tabular-nums' }}>
+                  {total.toFixed(1)} mi
+                </span>
               </div>
-              <div style={{
-                display: 'flex',
-                justifyContent: 'space-between',
-                alignItems: 'baseline',
-              }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline' }}>
                 <span style={{ fontSize: 13.5, fontWeight: 600, opacity: 0.85 }}>
                   {tt('mi.reimbursement')}
                 </span>
-                <span style={{
-                  fontSize: 22,
-                  fontWeight: 700,
-                  fontVariantNumeric: 'tabular-nums',
-                }}>${reimburse.toFixed(2)}</span>
+                <span style={{ fontSize: 22, fontWeight: 700, fontVariantNumeric: 'tabular-nums' }}>
+                  ${reimburse.toFixed(2)}
+                </span>
               </div>
             </div>
           </Step>
         )}
       </div>
-      <WizardFooter
-        onClose={goBack}
-        primaryLabel={step === 3 ? tt('common.submit') : tt('common.next')}
-        onPrimary={goNext}
-        primaryDisabled={!canNext}
-        secondaryLabel={step === 3 ? undefined : <>{tt('common.back')}</>}
-        onSecondary={step === 3 ? undefined : goBack}
-      />
+
+      {step === 3 && (
+        <SubmitBar disabled={entries.length === 0} onSubmit={submit} label={tt('common.submit')} />
+      )}
     </div>
   );
 }

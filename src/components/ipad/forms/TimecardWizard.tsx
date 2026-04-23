@@ -1,13 +1,10 @@
 'use client';
 
-import { useState } from 'react';
-import { Plus, Trash2, Coffee, X } from 'lucide-react';
+import { useRef, useState } from 'react';
+import { Plus, Trash2, Coffee, Check, Send } from 'lucide-react';
 import WizardHeader from '../steps/WizardHeader';
-import WizardFooter from '../steps/WizardFooter';
 import BigChoice from './shared/BigChoice';
-import StepDots from './shared/StepDots';
 import { useLanguage } from '@/lib/i18n/LanguageContext';
-import { format } from '@/lib/i18n/translations';
 import { theme as t } from '@/lib/theme';
 import {
   RECENT_JOBS,
@@ -45,27 +42,35 @@ function diffHours(timeIn: string, timeOut: string, lunch: boolean): number {
 }
 
 const TOTAL_STEPS = 5;
+const ADVANCE_DELAY = 280;
 
 export default function TimecardWizard({ user, onClose, onSubmit }: TimecardWizardProps) {
   const { t: tt } = useLanguage();
   const [step, setStep] = useState(0);
   const [weekEnding, setWeekEnding] = useState(nextFridayISO());
   const [entries, setEntries] = useState<TimecardEntry[]>([]);
-  // current entry being built in steps 1..3
-  const [day, setDay] = useState<string>('');
-  const [jobNum, setJobNum] = useState<string>('');
-  const [jobName, setJobName] = useState<string>('');
-  const [timeIn, setTimeIn] = useState<string>('');
-  const [timeOut, setTimeOut] = useState<string>('');
-  const [lunch, setLunch] = useState<boolean>(true);
+  const [day, setDay] = useState('');
+  const [jobNum, setJobNum] = useState('');
+  const [jobName, setJobName] = useState('');
+  const [timeIn, setTimeIn] = useState('');
+  const [timeOut, setTimeOut] = useState('');
+  const [lunch, setLunch] = useState(true);
 
-  const resetEntry = () => {
-    setDay(''); setJobNum(''); setJobName(''); setTimeIn(''); setTimeOut(''); setLunch(true);
+  const pendingRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const advanceTo = (n: number) => {
+    if (pendingRef.current) clearTimeout(pendingRef.current);
+    pendingRef.current = setTimeout(() => setStep(n), ADVANCE_DELAY);
   };
 
-  const commit = () => {
+  const back = () => {
+    if (pendingRef.current) clearTimeout(pendingRef.current);
+    if (step === 0) onClose();
+    else setStep(s => s - 1);
+  };
+
+  const commitAndReview = () => {
     const total = diffHours(timeIn, timeOut, lunch);
-    const entry: TimecardEntry = {
+    setEntries(prev => [...prev, {
       dayOfWeek: day,
       date: weekEnding,
       jobNumber: jobNum,
@@ -74,8 +79,13 @@ export default function TimecardWizard({ user, onClose, onSubmit }: TimecardWiza
       timeOut,
       lunch,
       totalHours: total,
-    };
-    setEntries(prev => [...prev, entry]);
+    }]);
+    setStep(4);
+  };
+
+  const addAnother = () => {
+    setDay(''); setJobNum(''); setJobName(''); setTimeIn(''); setTimeOut(''); setLunch(true);
+    setStep(1);
   };
 
   const submit = () => {
@@ -86,56 +96,15 @@ export default function TimecardWizard({ user, onClose, onSubmit }: TimecardWiza
     });
   };
 
-  const canNext = (() => {
-    switch (step) {
-      case 0: return !!weekEnding;
-      case 1: return !!day;
-      case 2: return !!jobNum;
-      case 3: return !!timeIn && !!timeOut;
-      case 4: return entries.length > 0 || (!!day && !!jobNum && !!timeIn && !!timeOut);
-      default: return true;
-    }
-  })();
-
-  const goNext = () => {
-    if (step === 3) {
-      commit();
-      setStep(4);
-      return;
-    }
-    if (step === 4) {
-      // If there's an in-flight entry not yet committed, commit it
-      // (in case user adds an entry then immediately submits)
-      submit();
-      return;
-    }
-    setStep(s => s + 1);
-  };
-  const goBack = () => {
-    if (step === 0) onClose();
-    else setStep(s => s - 1);
-  };
-
-  const addAnother = () => {
-    resetEntry();
-    setStep(1);
-  };
-  const removeEntry = (i: number) => {
-    setEntries(prev => prev.filter((_, idx) => idx !== i));
-  };
-
-  const isLast = step === 4;
-  const primaryLabel = step === 4 ? tt('common.submit') : tt('common.next');
-
   return (
     <div style={{ height: '100%', display: 'flex', flexDirection: 'column', background: t.bg }}>
       <WizardHeader
         title={tt('home.tile.timecard')}
-        subtitle={`${tt('common.step')} ${step + 1} ${tt('common.of')} ${TOTAL_STEPS}`}
-        onClose={goBack}
+        step={step}
+        totalSteps={TOTAL_STEPS}
+        onClose={back}
       />
-      <div style={{ flex: 1, overflow: 'auto', padding: '20px 22px 130px' }}>
-        <StepDots current={step} total={TOTAL_STEPS} />
+      <div style={{ flex: 1, overflow: 'auto', padding: '24px 22px 24px' }}>
 
         {step === 0 && (
           <Step title={tt('tc.whichWeek')}>
@@ -146,7 +115,7 @@ export default function TimecardWizard({ user, onClose, onSubmit }: TimecardWiza
                 { value: lastFridayISO(), label: tt('common.lastFriday') },
               ]}
               value={weekEnding}
-              onChange={setWeekEnding}
+              onChange={val => { setWeekEnding(val); advanceTo(1); }}
             />
           </Step>
         )}
@@ -157,7 +126,7 @@ export default function TimecardWizard({ user, onClose, onSubmit }: TimecardWiza
               columns={2}
               options={DAYS.map(d => ({ value: d.full, label: d.full }))}
               value={day}
-              onChange={setDay}
+              onChange={val => { setDay(val); advanceTo(2); }}
             />
           </Step>
         )}
@@ -176,6 +145,7 @@ export default function TimecardWizard({ user, onClose, onSubmit }: TimecardWiza
                 const j = RECENT_JOBS.find(x => x.number === val);
                 setJobNum(val);
                 setJobName(j?.name ?? '');
+                advanceTo(3);
               }}
             />
           </Step>
@@ -188,17 +158,29 @@ export default function TimecardWizard({ user, onClose, onSubmit }: TimecardWiza
               columns={4}
               options={TIME_PRESETS_IN}
               value={timeIn}
-              onChange={setTimeIn}
+              onChange={val => {
+                setTimeIn(val);
+                if (val && timeOut) {
+                  if (pendingRef.current) clearTimeout(pendingRef.current);
+                  pendingRef.current = setTimeout(commitAndReview, ADVANCE_DELAY);
+                }
+              }}
             />
-            <div style={{ height: 18 }} />
+            <div style={{ height: 14 }} />
             <Label text={tt('tc.timeOut')} />
             <BigChoice
               columns={3}
               options={TIME_PRESETS_OUT}
               value={timeOut}
-              onChange={setTimeOut}
+              onChange={val => {
+                setTimeOut(val);
+                if (val && timeIn) {
+                  if (pendingRef.current) clearTimeout(pendingRef.current);
+                  pendingRef.current = setTimeout(commitAndReview, ADVANCE_DELAY);
+                }
+              }}
             />
-            <div style={{ height: 18 }} />
+            <div style={{ height: 14 }} />
             <button
               onClick={() => setLunch(!lunch)}
               style={{
@@ -212,24 +194,32 @@ export default function TimecardWizard({ user, onClose, onSubmit }: TimecardWiza
                 border: `1.5px solid ${lunch ? t.success : t.line}`,
                 borderRadius: 14,
                 cursor: 'pointer',
-                fontSize: 15,
+                fontSize: 14.5,
                 fontWeight: 700,
                 textAlign: 'left',
               }}
             >
               <Coffee size={18} />
               {lunch ? tt('tc.tookLunch') : tt('tc.noLunch')}
-              <span
-                style={{
+              {lunch && (
+                <span style={{
                   marginLeft: 'auto',
                   fontSize: 12,
-                  fontWeight: 600,
-                  color: lunch ? t.success : t.inkLight,
-                }}
-              >
-                {lunch ? '−30 min' : ''}
-              </span>
+                  fontWeight: 700,
+                  color: t.success,
+                }}>−30 min</span>
+              )}
             </button>
+            {timeIn && timeOut && (
+              <div style={{
+                marginTop: 12,
+                fontSize: 13,
+                color: t.inkLight,
+                textAlign: 'center',
+              }}>
+                {diffHours(timeIn, timeOut, lunch).toFixed(1)} h
+              </div>
+            )}
           </Step>
         )}
 
@@ -242,7 +232,9 @@ export default function TimecardWizard({ user, onClose, onSubmit }: TimecardWiza
             )}
             <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
               {entries.map((e, i) => (
-                <EntryCard key={i} entry={e} onRemove={() => removeEntry(i)} />
+                <EntryCard key={i} entry={e} onRemove={() => {
+                  setEntries(prev => prev.filter((_, idx) => idx !== i));
+                }} />
               ))}
             </div>
             <div style={{ height: 14 }} />
@@ -267,39 +259,31 @@ export default function TimecardWizard({ user, onClose, onSubmit }: TimecardWiza
               <Plus size={16} strokeWidth={2.5} /> {tt('tc.addDay')}
             </button>
             <div style={{ height: 14 }} />
-            <div
-              style={{
-                background: t.navy,
-                color: '#fff',
-                borderRadius: 14,
-                padding: 16,
-                display: 'flex',
-                justifyContent: 'space-between',
-                alignItems: 'center',
-              }}
-            >
+            <div style={{
+              background: t.navy,
+              color: '#fff',
+              borderRadius: 14,
+              padding: 16,
+              display: 'flex',
+              justifyContent: 'space-between',
+              alignItems: 'center',
+            }}>
               <span style={{ fontSize: 13.5, fontWeight: 600 }}>{tt('tc.weekTotal')}</span>
-              <span
-                style={{
-                  fontSize: 22,
-                  fontWeight: 700,
-                  fontVariantNumeric: 'tabular-nums',
-                }}
-              >
+              <span style={{
+                fontSize: 22,
+                fontWeight: 700,
+                fontVariantNumeric: 'tabular-nums',
+              }}>
                 {entries.reduce((s, e) => s + e.totalHours, 0).toFixed(1)} h
               </span>
             </div>
           </Step>
         )}
       </div>
-      <WizardFooter
-        onClose={goBack}
-        primaryLabel={primaryLabel}
-        onPrimary={goNext}
-        primaryDisabled={!canNext}
-        secondaryLabel={isLast ? undefined : <>{tt('common.back')}</>}
-        onSecondary={isLast ? undefined : goBack}
-      />
+
+      {step === 4 && (
+        <SubmitBar disabled={entries.length === 0} onSubmit={submit} label={tt('common.submit')} />
+      )}
     </div>
   );
 }
@@ -367,6 +351,49 @@ function EntryCard({ entry, onRemove }: { entry: TimecardEntry; onRemove: () => 
         }}
       >
         <Trash2 size={14} color={t.inkMuted} />
+      </button>
+    </div>
+  );
+}
+
+export function SubmitBar({
+  disabled,
+  onSubmit,
+  label,
+  icon,
+}: {
+  disabled: boolean;
+  onSubmit: () => void;
+  label: string;
+  icon?: React.ReactNode;
+}) {
+  return (
+    <div style={{
+      padding: '14px 22px 22px',
+      background: t.card,
+      borderTop: `1px solid ${t.line}`,
+    }}>
+      <button
+        onClick={onSubmit}
+        disabled={disabled}
+        style={{
+          width: '100%',
+          padding: 18,
+          borderRadius: 14,
+          background: disabled ? t.bgSoft : t.accent,
+          color: disabled ? t.inkLight : '#fff',
+          border: 'none',
+          fontSize: 16,
+          fontWeight: 700,
+          cursor: disabled ? 'not-allowed' : 'pointer',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          gap: 10,
+          boxShadow: disabled ? 'none' : '0 4px 14px rgba(200,85,61,0.35)',
+        }}
+      >
+        {icon ?? <Send size={17} strokeWidth={2.5} />} {label}
       </button>
     </div>
   );

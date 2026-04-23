@@ -82,6 +82,33 @@ export const RATE_PRESETS: { value: number; label: string }[] = [
   { value: 125, label: '$125' },
 ];
 
+// Mileage lookup — driving distance between common locations.
+// Strips the suffix after " — " (the address) so "Shop — 4262 Blue Diamond Rd"
+// matches the short key "Shop".
+const MILEAGE_TABLE: Record<string, number> = {
+  'Shop|Caesars Palace':              13,
+  'Shop|Summerlin Medical':           22,
+  'Shop|Ferguson Supply':              8,
+  'Shop|Bellagio':                    13,
+  'Shop|MGM Grand':                   14,
+  'Caesars Palace|Summerlin Medical': 18,
+  'Caesars Palace|Bellagio':           1,
+  'Caesars Palace|MGM Grand':          2,
+  'Caesars Palace|Ferguson Supply':   12,
+  'Bellagio|MGM Grand':                2,
+  'Bellagio|Ferguson Supply':         11,
+  'Summerlin Medical|Ferguson Supply':19,
+  'Summerlin Medical|MGM Grand':      18,
+  'MGM Grand|Ferguson Supply':        13,
+};
+
+export function mileageBetween(start: string, end: string): number {
+  if (!start || !end || start === end) return 0;
+  const ka = start.split(' — ')[0];
+  const kb = end.split(' — ')[0];
+  return MILEAGE_TABLE[`${ka}|${kb}`] ?? MILEAGE_TABLE[`${kb}|${ka}`] ?? 12;
+}
+
 // Date helpers — return YYYY-MM-DD
 const fmt = (d: Date) => d.toISOString().slice(0, 10);
 
