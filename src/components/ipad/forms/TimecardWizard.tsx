@@ -1,7 +1,7 @@
 'use client';
 
 import { useRef, useState } from 'react';
-import { Plus, Trash2, Coffee, Check, Send } from 'lucide-react';
+import { Plus, Trash2, Coffee, Send } from 'lucide-react';
 import WizardHeader from '../steps/WizardHeader';
 import BigChoice from './shared/BigChoice';
 import { useLanguage } from '@/lib/i18n/LanguageContext';

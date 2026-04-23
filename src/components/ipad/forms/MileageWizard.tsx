@@ -115,30 +115,42 @@ export default function MileageWizard({ user, onClose, onSubmit }: MileageWizard
           <Step title={tt('mi.tripDetails')}>
             <Label text={tt('mi.from')} />
             <BigChoice
-              columns={1}
-              options={RECENT_LOCATIONS.map(loc => ({ value: loc, label: loc }))}
+              columns={2}
+              options={RECENT_LOCATIONS.map(loc => ({
+                value: loc.full,
+                label: loc.short,
+                sublabel: loc.address,
+              }))}
               value={start}
               onChange={val => {
                 setStart(val);
-                if (val && end) {
+                if (val && end && val !== end) {
                   const m = mileageBetween(val, end);
-                  setMiles(m);
-                  scheduleAdvance(() => commit(val, end, m, date));
+                  if (m > 0) {
+                    setMiles(m);
+                    scheduleAdvance(() => commit(val, end, m, date));
+                  }
                 }
               }}
             />
             <div style={{ height: 14 }} />
             <Label text={tt('mi.to')} />
             <BigChoice
-              columns={1}
-              options={RECENT_LOCATIONS.map(loc => ({ value: loc, label: loc }))}
+              columns={2}
+              options={RECENT_LOCATIONS.map(loc => ({
+                value: loc.full,
+                label: loc.short,
+                sublabel: loc.address,
+              }))}
               value={end}
               onChange={val => {
                 setEnd(val);
-                if (start && val) {
+                if (start && val && start !== val) {
                   const m = mileageBetween(start, val);
-                  setMiles(m);
-                  scheduleAdvance(() => commit(start, val, m, date));
+                  if (m > 0) {
+                    setMiles(m);
+                    scheduleAdvance(() => commit(start, val, m, date));
+                  }
                 }
               }}
             />

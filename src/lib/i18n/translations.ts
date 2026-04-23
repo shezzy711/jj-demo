@@ -57,6 +57,7 @@ export const translations: Record<string, { en: string; es: string }> = {
   'common.weatherSunny': { en: 'Sunny', es: 'Soleado' },
   'common.weatherRainy': { en: 'Rainy', es: 'Lluvioso' },
   'common.weatherCloudy':{ en: 'Cloudy', es: 'Nublado' },
+  'common.weatherWindy': { en: 'Windy', es: 'Ventoso' },
   'common.autoFromWeather': { en: 'Auto from weather', es: 'Automático del clima' },
   'common.fromClockIns':    { en: 'From clock-ins', es: 'Desde fichajes' },
 

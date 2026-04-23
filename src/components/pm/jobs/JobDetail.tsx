@@ -2,7 +2,6 @@
 
 import { ChevronLeft, MapPin, User, Calendar } from 'lucide-react';
 import Avatar from '@/components/shared/Avatar';
-import Pill from '@/components/shared/Pill';
 import { useLanguage } from '@/lib/i18n/LanguageContext';
 import { theme as t } from '@/lib/theme';
 import { crewOnJob } from '@/lib/sampleData';

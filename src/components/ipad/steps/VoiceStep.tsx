@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useRef, useState } from 'react';
 import { Mic, Edit3, Check } from 'lucide-react';
 import WizardHeader from './WizardHeader';
 import WizardFooter from './WizardFooter';
@@ -42,9 +42,21 @@ export default function VoiceStep({
   const [prose, setProse] = useState<string>(typeof existing === 'string' ? existing : '');
   const [items, setItems] = useState<ParsedItem[]>(Array.isArray(existing) ? existing : []);
   const [editingProse, setEditingProse] = useState(false);
+  const recordStartRef = useRef<number>(0);
 
+  // Min hold to count as a real recording. A quick accidental tap should
+  // NOT auto-fill the seeded transcript — that's what made the demo feel
+  // pre-populated.
+  const MIN_HOLD_MS = 600;
+
+  const handlePress = () => {
+    setRecording(true);
+    recordStartRef.current = Date.now();
+  };
   const handleRelease = () => {
+    const heldFor = Date.now() - recordStartRef.current;
     setRecording(false);
+    if (heldFor < MIN_HOLD_MS) return; // treat as cancel
     if (mode === 'prose' && seededTranscript) setProse(seededTranscript);
     else if (mode === 'items' && seededItems) setItems(seededItems);
     setPhase('review');
@@ -80,10 +92,10 @@ export default function VoiceStep({
             }}
           >
             <button
-              onMouseDown={() => setRecording(true)}
+              onMouseDown={handlePress}
               onMouseUp={handleRelease}
               onMouseLeave={() => recording && handleRelease()}
-              onTouchStart={() => setRecording(true)}
+              onTouchStart={handlePress}
               onTouchEnd={handleRelease}
               style={{
                 width: 200,

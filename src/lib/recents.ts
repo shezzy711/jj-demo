@@ -12,13 +12,19 @@ export const RECENT_JOBS: RecentJob[] = [
   { number: '2515', name: 'MGM Sportsbook Backflow', address: '3799 S Las Vegas Blvd, Las Vegas, NV 89109' },
 ];
 
-export const RECENT_LOCATIONS: string[] = [
-  'Shop — 4262 Blue Diamond Rd',
-  'Caesars Palace — 3570 S Las Vegas Blvd',
-  'Summerlin Medical — 653 N Town Center Dr',
-  'Ferguson Supply — 6675 S Eastern Ave',
-  'Bellagio — 3600 S Las Vegas Blvd',
-  'MGM Grand — 3799 S Las Vegas Blvd',
+export interface RecentLocation {
+  short: string;        // tile label
+  address: string;      // sublabel — fits in a 2-column tile
+  full: string;         // canonical value carried into the report
+}
+
+export const RECENT_LOCATIONS: RecentLocation[] = [
+  { short: 'Shop',             address: '4262 Blue Diamond Rd', full: 'Shop — 4262 Blue Diamond Rd' },
+  { short: 'Caesars Palace',   address: '3570 LV Blvd',         full: 'Caesars Palace — 3570 S Las Vegas Blvd' },
+  { short: 'Summerlin Medical',address: '653 Town Center',      full: 'Summerlin Medical — 653 N Town Center Dr' },
+  { short: 'Ferguson Supply',  address: '6675 S Eastern',       full: 'Ferguson Supply — 6675 S Eastern Ave' },
+  { short: 'Bellagio',         address: '3600 LV Blvd',         full: 'Bellagio — 3600 S Las Vegas Blvd' },
+  { short: 'MGM Grand',        address: '3799 LV Blvd',         full: 'MGM Grand — 3799 S Las Vegas Blvd' },
 ];
 
 export interface CommonMaterial {

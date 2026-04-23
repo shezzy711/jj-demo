@@ -1,7 +1,7 @@
 'use client';
 
 import { useState } from 'react';
-import { Briefcase, ArrowLeft } from 'lucide-react';
+import { Briefcase } from 'lucide-react';
 import IPadShell from '@/components/ipad/IPadShell';
 import FieldApp, { type SubmittedForm } from '@/components/ipad/FieldApp';
 import PMDesktop from '@/components/pm/PMDesktop';

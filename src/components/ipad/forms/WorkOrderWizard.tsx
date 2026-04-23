@@ -216,7 +216,7 @@ export default function WorkOrderWizard({ user, onClose, onSubmit }: WorkOrderWi
               {([
                 { value: 'sunny', label: tt('common.weatherSunny'), Icon: Sun,       color: '#D97706' },
                 { value: 'rainy', label: tt('common.weatherRainy'), Icon: CloudRain, color: '#0369A1' },
-                { value: 'windy', label: 'Windy',                   Icon: Wind,      color: '#525252' },
+                { value: 'windy', label: tt('common.weatherWindy'), Icon: Wind,      color: '#525252' },
               ] as const).map(opt => {
                 const sel = weather === opt.value;
                 return (
