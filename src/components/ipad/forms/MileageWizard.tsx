@@ -49,12 +49,14 @@ export default function MileageWizard({ user, onClose, onSubmit }: MileageWizard
     else setStep(s => s - 1);
   };
 
-  const commitAndReview = () => {
+  // Bug fix: pass values explicitly so the timer's closure doesn't capture
+  // stale state from the render before the tap that set them.
+  const commit = (s: string, e: string, m: number, d: string) => {
     setEntries(prev => [...prev, {
-      date,
-      startLocation: start,
-      endLocation: end,
-      totalMiles: miles,
+      date: d,
+      startLocation: s,
+      endLocation: e,
+      totalMiles: m,
     }]);
     setStep(3);
   };
@@ -119,9 +121,9 @@ export default function MileageWizard({ user, onClose, onSubmit }: MileageWizard
               onChange={val => {
                 setStart(val);
                 if (val && end) {
-                  const auto = mileageBetween(val, end);
-                  setMiles(auto);
-                  scheduleAdvance(commitAndReview);
+                  const m = mileageBetween(val, end);
+                  setMiles(m);
+                  scheduleAdvance(() => commit(val, end, m, date));
                 }
               }}
             />
@@ -134,9 +136,9 @@ export default function MileageWizard({ user, onClose, onSubmit }: MileageWizard
               onChange={val => {
                 setEnd(val);
                 if (start && val) {
-                  const auto = mileageBetween(start, val);
-                  setMiles(auto);
-                  scheduleAdvance(commitAndReview);
+                  const m = mileageBetween(start, val);
+                  setMiles(m);
+                  scheduleAdvance(() => commit(start, val, m, date));
                 }
               }}
             />

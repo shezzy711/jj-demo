@@ -68,16 +68,26 @@ export default function TimecardWizard({ user, onClose, onSubmit }: TimecardWiza
     else setStep(s => s - 1);
   };
 
-  const commitAndReview = () => {
-    const total = diffHours(timeIn, timeOut, lunch);
+  // Bug fix: pass values explicitly so the timer's closure doesn't capture
+  // stale state from before the tap that set them.
+  const commit = (
+    d: string,
+    jn: string,
+    jname: string,
+    ti: string,
+    to: string,
+    l: boolean,
+    w: string,
+  ) => {
+    const total = diffHours(ti, to, l);
     setEntries(prev => [...prev, {
-      dayOfWeek: day,
-      date: weekEnding,
-      jobNumber: jobNum,
-      jobName,
-      timeIn,
-      timeOut,
-      lunch,
+      dayOfWeek: d,
+      date: w,
+      jobNumber: jn,
+      jobName: jname,
+      timeIn: ti,
+      timeOut: to,
+      lunch: l,
       totalHours: total,
     }]);
     setStep(4);
@@ -162,7 +172,10 @@ export default function TimecardWizard({ user, onClose, onSubmit }: TimecardWiza
                 setTimeIn(val);
                 if (val && timeOut) {
                   if (pendingRef.current) clearTimeout(pendingRef.current);
-                  pendingRef.current = setTimeout(commitAndReview, ADVANCE_DELAY);
+                  pendingRef.current = setTimeout(
+                    () => commit(day, jobNum, jobName, val, timeOut, lunch, weekEnding),
+                    ADVANCE_DELAY,
+                  );
                 }
               }}
             />
@@ -176,13 +189,28 @@ export default function TimecardWizard({ user, onClose, onSubmit }: TimecardWiza
                 setTimeOut(val);
                 if (val && timeIn) {
                   if (pendingRef.current) clearTimeout(pendingRef.current);
-                  pendingRef.current = setTimeout(commitAndReview, ADVANCE_DELAY);
+                  pendingRef.current = setTimeout(
+                    () => commit(day, jobNum, jobName, timeIn, val, lunch, weekEnding),
+                    ADVANCE_DELAY,
+                  );
                 }
               }}
             />
             <div style={{ height: 14 }} />
             <button
-              onClick={() => setLunch(!lunch)}
+              onClick={() => {
+                const next = !lunch;
+                setLunch(next);
+                // If both times are already chosen, re-schedule the commit with the
+                // freshly-toggled lunch value so the entry's totalHours reflects it.
+                if (timeIn && timeOut) {
+                  if (pendingRef.current) clearTimeout(pendingRef.current);
+                  pendingRef.current = setTimeout(
+                    () => commit(day, jobNum, jobName, timeIn, timeOut, next, weekEnding),
+                    ADVANCE_DELAY,
+                  );
+                }
+              }}
               style={{
                 display: 'flex',
                 alignItems: 'center',
