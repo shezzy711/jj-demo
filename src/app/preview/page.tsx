@@ -42,7 +42,7 @@ export default function PreviewPage() {
             justifyItems: 'center',
           }}
         >
-          <Column letter="A" name="Worksite-bold" sub="Milwaukee/DeWalt feel — gloves on">
+          <Column letter="A" name="Hardline" sub="Spike TV vibe — warm dark, deep red, brass">
             <WorksiteVariant />
           </Column>
           <Column letter="B" name="Sport-app loud" sub="Strava/DraftKings — kinetic">
