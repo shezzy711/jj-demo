@@ -9,17 +9,22 @@ import JobsList from './jobs/JobsList';
 import JobDetail from './jobs/JobDetail';
 import SettingsPage from './settings/SettingsPage';
 import IPadModal from '@/components/ipad/IPadModal';
-import FieldApp from '@/components/ipad/FieldApp';
-import PrintReportOverlay from '@/components/report/PrintReportOverlay';
+import FieldApp, { type SubmittedForm } from '@/components/ipad/FieldApp';
+import PrintReportOverlay, {
+  type ReportPayload,
+  buildTimecardForEmployee,
+} from '@/components/report/PrintReportOverlay';
+import { useLanguage } from '@/lib/i18n/LanguageContext';
 import { theme as t } from '@/lib/theme';
 import { findEmployee, findProject } from '@/lib/sampleData';
 
 export default function PMDesktop() {
+  const { t: tt } = useLanguage();
   const [section, setSection] = useState<PMSection>('employees');
   const [personId, setPersonId] = useState<string | null>(null);
   const [jobId, setJobId] = useState<string | null>(null);
-  const [iPadMode, setIPadMode] = useState<'foreman' | 'tech' | null>(null);
-  const [printingPersonId, setPrintingPersonId] = useState<string | null>(null);
+  const [iPadOpen, setIPadOpen] = useState(false);
+  const [report, setReport] = useState<ReportPayload | null>(null);
 
   const switchSection = (s: PMSection) => {
     setSection(s);
@@ -27,9 +32,32 @@ export default function PMDesktop() {
     setJobId(null);
   };
 
-  const printingEmp = printingPersonId ? findEmployee(printingPersonId) : null;
   const personEmp = personId ? findEmployee(personId) : null;
   const jobProject = jobId ? findProject(jobId) : null;
+
+  // When the iPad submits a form, close the device modal and show the
+  // restyled Excel-style filled paper form on top of the desktop.
+  const handleIPadSubmit = (form: SubmittedForm) => {
+    setIPadOpen(false);
+    const titleByType: Record<SubmittedForm['type'], string> = {
+      timecard:    tt('home.tile.timecard'),
+      mileage:     tt('home.tile.mileage'),
+      requisition: tt('home.tile.requisition'),
+      workorder:   tt('home.tile.workorder'),
+    };
+    setReport({ ...form, title: titleByType[form.type] } as ReportPayload);
+  };
+
+  // PM-side "Print this week" — synthesises a TimecardData from sample rows
+  const handlePrintEmployee = (id: string) => {
+    const emp = findEmployee(id);
+    if (!emp) return;
+    setReport({
+      type: 'timecard',
+      title: tt('home.tile.timecard'),
+      data: buildTimecardForEmployee(emp),
+    });
+  };
 
   return (
     <div
@@ -43,8 +71,7 @@ export default function PMDesktop() {
       <PMSidebar
         section={section}
         onSection={switchSection}
-        onOpenForeman={() => setIPadMode('foreman')}
-        onOpenTech={() => setIPadMode('tech')}
+        onOpenIPad={() => setIPadOpen(true)}
       />
 
       <main style={{ flex: 1, padding: '32px 44px', maxWidth: 1400 }}>
@@ -59,7 +86,7 @@ export default function PMDesktop() {
           <PersonDetail
             emp={personEmp}
             onBack={() => setPersonId(null)}
-            onPrint={() => setPrintingPersonId(personEmp.id)}
+            onPrint={() => handlePrintEmployee(personEmp.id)}
           />
         )}
 
@@ -73,15 +100,13 @@ export default function PMDesktop() {
         {section === 'settings' && <SettingsPage />}
       </main>
 
-      {iPadMode && (
-        <IPadModal onClose={() => setIPadMode(null)}>
-          <FieldApp mode={iPadMode} onClose={() => setIPadMode(null)} />
+      {iPadOpen && (
+        <IPadModal onClose={() => setIPadOpen(false)}>
+          <FieldApp onSubmit={handleIPadSubmit} />
         </IPadModal>
       )}
 
-      {printingEmp && (
-        <PrintReportOverlay onClose={() => setPrintingPersonId(null)} employee={printingEmp} />
-      )}
+      {report && <PrintReportOverlay payload={report} onClose={() => setReport(null)} />}
     </div>
   );
 }

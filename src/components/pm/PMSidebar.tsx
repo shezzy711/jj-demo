@@ -1,6 +1,6 @@
 'use client';
 
-import { Users, Briefcase, Settings, Tablet, Smartphone } from 'lucide-react';
+import { Users, Briefcase, Settings, Tablet } from 'lucide-react';
 import JJLogoMark from '@/components/shared/JJLogoMark';
 import Avatar from '@/components/shared/Avatar';
 import { useLanguage } from '@/lib/i18n/LanguageContext';
@@ -13,11 +13,10 @@ export type PMSection = 'employees' | 'jobs' | 'settings';
 interface PMSidebarProps {
   section: PMSection;
   onSection: (section: PMSection) => void;
-  onOpenForeman: () => void;
-  onOpenTech: () => void;
+  onOpenIPad: () => void;
 }
 
-export default function PMSidebar({ section, onSection, onOpenForeman, onOpenTech }: PMSidebarProps) {
+export default function PMSidebar({ section, onSection, onOpenIPad }: PMSidebarProps) {
   const { t: tt } = useLanguage();
   const items = [
     { id: 'employees' as const, label: tt('pm.nav.employees'), icon: Users,     count: employees.length },
@@ -105,67 +104,28 @@ export default function PMSidebar({ section, onSection, onOpenForeman, onOpenTec
 
       <div style={{ flex: 1 }} />
 
-      <div
+      <button
+        onClick={onOpenIPad}
         style={{
           display: 'flex',
-          flexDirection: 'column',
-          gap: 8,
+          alignItems: 'center',
+          gap: 10,
+          padding: '14px 16px',
           marginBottom: 14,
-          padding: '14px 0',
-          borderTop: `1px solid ${t.line}`,
+          borderRadius: 12,
+          background: t.accent,
+          border: 'none',
+          cursor: 'pointer',
+          fontSize: 14,
+          fontWeight: 700,
+          color: '#fff',
+          textAlign: 'left',
+          boxShadow: '0 6px 18px rgba(200,85,61,0.3)',
         }}
       >
-        <div
-          style={{
-            fontSize: 10.5,
-            fontWeight: 700,
-            color: t.inkLight,
-            letterSpacing: '0.08em',
-            textTransform: 'uppercase',
-            paddingLeft: 4,
-          }}
-        >
-          Demo
-        </div>
-        <button
-          onClick={onOpenForeman}
-          style={{
-            display: 'flex',
-            alignItems: 'center',
-            gap: 10,
-            padding: '11px 14px',
-            borderRadius: 10,
-            background: t.bg,
-            border: `1px solid ${t.lineStrong}`,
-            cursor: 'pointer',
-            fontSize: 13,
-            fontWeight: 600,
-            color: t.ink,
-            textAlign: 'left',
-          }}
-        >
-          <Tablet size={15} /> {tt('pm.openForemanIPad')}
-        </button>
-        <button
-          onClick={onOpenTech}
-          style={{
-            display: 'flex',
-            alignItems: 'center',
-            gap: 10,
-            padding: '11px 14px',
-            borderRadius: 10,
-            background: t.bg,
-            border: `1px solid ${t.lineStrong}`,
-            cursor: 'pointer',
-            fontSize: 13,
-            fontWeight: 600,
-            color: t.ink,
-            textAlign: 'left',
-          }}
-        >
-          <Smartphone size={15} /> {tt('pm.openTechIPad')}
-        </button>
-      </div>
+        <Tablet size={17} strokeWidth={2.2} />
+        <span style={{ flex: 1 }}>{tt('pm.openIPad')}</span>
+      </button>
 
       <div
         style={{

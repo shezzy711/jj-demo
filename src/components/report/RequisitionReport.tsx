@@ -7,13 +7,14 @@ import type { RequisitionData } from '@/lib/types/forms';
 interface Props {
   data: RequisitionData;
   onReset: () => void;
+  embedded?: boolean;
 }
 
-export default function RequisitionReport({ data, onReset }: Props) {
+export default function RequisitionReport({ data, onReset, embedded }: Props) {
   const { t } = useLanguage();
 
   return (
-    <ReportShell formTitle={t('requisition.title')} onReset={onReset}>
+    <ReportShell formTitle={t('requisition.title')} onReset={onReset} embedded={embedded}>
       <table className="mb-4">
         <tbody>
           <tr>

@@ -64,8 +64,7 @@ export const translations: Record<string, { en: string; es: string }> = {
   'pm.nav.employees':    { en: 'Employees', es: 'Empleados' },
   'pm.nav.jobs':         { en: 'Jobs', es: 'Trabajos' },
   'pm.nav.settings':     { en: 'Settings', es: 'Ajustes' },
-  'pm.openForemanIPad':  { en: 'Open Foreman iPad', es: 'Abrir iPad de Capataz' },
-  'pm.openTechIPad':     { en: 'Open Tech iPad', es: 'Abrir iPad de Técnico' },
+  'pm.openIPad':         { en: 'Open the iPad', es: 'Abrir el iPad' },
   'pm.profile':          { en: 'Office', es: 'Oficina' },
   'pm.profile.role':     { en: 'Project Manager', es: 'Gerente de Proyecto' },
 
@@ -295,7 +294,74 @@ export const translations: Record<string, { en: string; es: string }> = {
   'workorder.pandO':           { en: '10% P&O', es: '10% P&O' },
   'workorder.jobTotal':        { en: 'Job Total', es: 'Total del Trabajo' },
 
-  // ─── Translation helper for tokens like {{name}} ─────────────────
+  // ─── iPad home (4-tile dashboard) ────────────────────────────────
+  'home.greeting':           { en: 'Hi, {{name}}', es: 'Hola, {{name}}' },
+  'home.pick':               { en: 'Which form?', es: '¿Qué formulario?' },
+  'home.tile.timecard':      { en: 'Timecard', es: 'Tarjeta de Tiempo' },
+  'home.tile.mileage':       { en: 'Mileage', es: 'Millaje' },
+  'home.tile.requisition':   { en: 'Materials & Tools', es: 'Materiales y Herramientas' },
+  'home.tile.workorder':     { en: 'Daily Work Order', es: 'Orden de Trabajo' },
+
+  // ─── Common form chrome ──────────────────────────────────────────
+  'common.step':             { en: 'Step', es: 'Paso' },
+  'common.of':               { en: 'of', es: 'de' },
+
+  // ─── Timecard wizard ─────────────────────────────────────────────
+  'tc.whichWeek':            { en: 'Which week?', es: '¿Qué semana?' },
+  'tc.whichDay':             { en: 'Which day?', es: '¿Qué día?' },
+  'tc.whichJob':             { en: 'Which job?', es: '¿Qué trabajo?' },
+  'tc.whichHours':           { en: 'What hours?', es: '¿Qué horas?' },
+  'tc.timeIn':               { en: 'Started at', es: 'Comenzó a las' },
+  'tc.timeOut':              { en: 'Finished at', es: 'Terminó a las' },
+  'tc.tookLunch':            { en: 'Took lunch', es: 'Tomó almuerzo' },
+  'tc.noLunch':              { en: 'No lunch', es: 'Sin almuerzo' },
+  'tc.review':               { en: 'Looks good?', es: '¿Se ve bien?' },
+  'tc.empty':                { en: 'No days yet — go back to add one.', es: 'Ningún día — regresa para agregar uno.' },
+  'tc.addDay':               { en: 'Add another day', es: 'Agregar otro día' },
+  'tc.weekTotal':            { en: 'Week total', es: 'Total semanal' },
+
+  // ─── Mileage wizard ──────────────────────────────────────────────
+  'mi.whichWeek':            { en: 'Which week?', es: '¿Qué semana?' },
+  'mi.whichDay':             { en: 'Which day?', es: '¿Qué día?' },
+  'mi.tripDetails':          { en: 'Where did you drive?', es: '¿Adónde manejaste?' },
+  'mi.from':                 { en: 'From', es: 'Desde' },
+  'mi.to':                   { en: 'To', es: 'Hasta' },
+  'mi.howMany':              { en: 'How many miles?', es: '¿Cuántas millas?' },
+  'mi.review':               { en: 'Looks good?', es: '¿Se ve bien?' },
+  'mi.addLeg':               { en: 'Add another trip', es: 'Agregar otro viaje' },
+  'mi.totalMiles':           { en: 'Total miles', es: 'Millas totales' },
+  'mi.reimbursement':        { en: 'Reimbursement', es: 'Reembolso' },
+
+  // ─── Requisition wizard ──────────────────────────────────────────
+  'req.whichJob':            { en: 'Which job?', es: '¿Qué trabajo?' },
+  'req.whichForeman':        { en: 'Whose crew?', es: '¿Equipo de quién?' },
+  'req.materials':           { en: 'Materials needed', es: 'Materiales necesarios' },
+  'req.materials.sub':       { en: 'Say what you need.', es: 'Di lo que necesitas.' },
+  'req.tools':               { en: 'Tools needed', es: 'Herramientas necesarias' },
+  'req.tools.sub':           { en: 'From the shop.', es: 'Del taller.' },
+  'req.notes':               { en: 'Notes for office', es: 'Notas para la oficina' },
+  'req.notes.sub':           { en: 'Anything special?', es: '¿Algo especial?' },
+
+  // ─── Daily Work Order wizard ─────────────────────────────────────
+  'wo.whichJob':             { en: 'Which job?', es: '¿Qué trabajo?' },
+  'wo.formType':             { en: 'Form type', es: 'Tipo de formulario' },
+  'wo.type.workOrder':       { en: 'Work Order', es: 'Trabajo' },
+  'wo.type.changeOrder':     { en: 'Change Order', es: 'Cambio' },
+  'wo.type.estimate':        { en: 'Estimate', es: 'Estimado' },
+  'wo.whichDay':             { en: 'Which day?', es: '¿Qué día?' },
+  'wo.tech':                 { en: 'Technician', es: 'Técnico' },
+  'wo.timeWeather':          { en: 'Time & weather', es: 'Hora y clima' },
+  'wo.timeIn':               { en: 'Started at', es: 'Comenzó a las' },
+  'wo.timeOut':              { en: 'Finished at', es: 'Terminó a las' },
+  'wo.weather':              { en: 'Weather', es: 'Clima' },
+  'wo.temperature':          { en: 'Temperature', es: 'Temperatura' },
+  'wo.scopeTitle':           { en: 'What did you do?', es: '¿Qué hiciste?' },
+  'wo.scopeSub':             { en: 'Tell the customer.', es: 'Cuéntale al cliente.' },
+  'wo.materialsTitle':       { en: 'Materials used', es: 'Materiales usados' },
+  'wo.materialsSub':         { en: 'Say what you used.', es: 'Di lo que usaste.' },
+  'wo.anyProblems':          { en: 'Any problems?', es: '¿Algún problema?' },
+  'wo.noProblems':           { en: 'No, all good', es: 'No, todo bien' },
+  'wo.yesProblems':          { en: 'Yes, flag it', es: 'Sí, marca' },
 };
 
 export function format(template: string, vars: Record<string, string | number>): string {

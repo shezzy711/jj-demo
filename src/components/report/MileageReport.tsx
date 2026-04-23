@@ -12,15 +12,16 @@ import { MILEAGE_RATE, type MileageData } from '@/lib/types/forms';
 interface Props {
   data: MileageData;
   onReset: () => void;
+  embedded?: boolean;
 }
 
-export default function MileageReport({ data, onReset }: Props) {
+export default function MileageReport({ data, onReset, embedded }: Props) {
   const { t } = useLanguage();
   const totalMiles = calculateMileageTotal(data.entries);
   const reimbursement = calculateMileageReimbursement(totalMiles);
 
   return (
-    <ReportShell formTitle={t('mileage.title')} onReset={onReset}>
+    <ReportShell formTitle={t('mileage.title')} onReset={onReset} embedded={embedded}>
       <table className="mb-4">
         <tbody>
           <tr>

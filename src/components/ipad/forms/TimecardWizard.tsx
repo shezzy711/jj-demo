@@ -1,0 +1,373 @@
+'use client';
+
+import { useState } from 'react';
+import { Plus, Trash2, Coffee, X } from 'lucide-react';
+import WizardHeader from '../steps/WizardHeader';
+import WizardFooter from '../steps/WizardFooter';
+import BigChoice from './shared/BigChoice';
+import StepDots from './shared/StepDots';
+import { useLanguage } from '@/lib/i18n/LanguageContext';
+import { format } from '@/lib/i18n/translations';
+import { theme as t } from '@/lib/theme';
+import {
+  RECENT_JOBS,
+  TIME_PRESETS_IN,
+  TIME_PRESETS_OUT,
+  nextFridayISO,
+  lastFridayISO,
+} from '@/lib/recents';
+import type { Employee, TimecardData, TimecardEntry } from '@/lib/types/forms';
+
+interface TimecardWizardProps {
+  user: Employee;
+  onClose: () => void;
+  onSubmit: (data: TimecardData) => void;
+}
+
+const DAYS = [
+  { full: 'Monday',    short: 'Mon' },
+  { full: 'Tuesday',   short: 'Tue' },
+  { full: 'Wednesday', short: 'Wed' },
+  { full: 'Thursday',  short: 'Thu' },
+  { full: 'Friday',    short: 'Fri' },
+  { full: 'Saturday',  short: 'Sat' },
+  { full: 'Sunday',    short: 'Sun' },
+];
+
+function diffHours(timeIn: string, timeOut: string, lunch: boolean): number {
+  if (!timeIn || !timeOut) return 0;
+  const [hi, mi] = timeIn.split(':').map(Number);
+  const [ho, mo] = timeOut.split(':').map(Number);
+  let h = ho + mo / 60 - (hi + mi / 60);
+  if (h < 0) h += 24;
+  if (lunch) h -= 0.5;
+  return Math.max(0, Math.round(h * 10) / 10);
+}
+
+const TOTAL_STEPS = 5;
+
+export default function TimecardWizard({ user, onClose, onSubmit }: TimecardWizardProps) {
+  const { t: tt } = useLanguage();
+  const [step, setStep] = useState(0);
+  const [weekEnding, setWeekEnding] = useState(nextFridayISO());
+  const [entries, setEntries] = useState<TimecardEntry[]>([]);
+  // current entry being built in steps 1..3
+  const [day, setDay] = useState<string>('');
+  const [jobNum, setJobNum] = useState<string>('');
+  const [jobName, setJobName] = useState<string>('');
+  const [timeIn, setTimeIn] = useState<string>('');
+  const [timeOut, setTimeOut] = useState<string>('');
+  const [lunch, setLunch] = useState<boolean>(true);
+
+  const resetEntry = () => {
+    setDay(''); setJobNum(''); setJobName(''); setTimeIn(''); setTimeOut(''); setLunch(true);
+  };
+
+  const commit = () => {
+    const total = diffHours(timeIn, timeOut, lunch);
+    const entry: TimecardEntry = {
+      dayOfWeek: day,
+      date: weekEnding,
+      jobNumber: jobNum,
+      jobName,
+      timeIn,
+      timeOut,
+      lunch,
+      totalHours: total,
+    };
+    setEntries(prev => [...prev, entry]);
+  };
+
+  const submit = () => {
+    onSubmit({
+      employeeName: user.name,
+      weekEnding,
+      entries,
+    });
+  };
+
+  const canNext = (() => {
+    switch (step) {
+      case 0: return !!weekEnding;
+      case 1: return !!day;
+      case 2: return !!jobNum;
+      case 3: return !!timeIn && !!timeOut;
+      case 4: return entries.length > 0 || (!!day && !!jobNum && !!timeIn && !!timeOut);
+      default: return true;
+    }
+  })();
+
+  const goNext = () => {
+    if (step === 3) {
+      commit();
+      setStep(4);
+      return;
+    }
+    if (step === 4) {
+      // If there's an in-flight entry not yet committed, commit it
+      // (in case user adds an entry then immediately submits)
+      submit();
+      return;
+    }
+    setStep(s => s + 1);
+  };
+  const goBack = () => {
+    if (step === 0) onClose();
+    else setStep(s => s - 1);
+  };
+
+  const addAnother = () => {
+    resetEntry();
+    setStep(1);
+  };
+  const removeEntry = (i: number) => {
+    setEntries(prev => prev.filter((_, idx) => idx !== i));
+  };
+
+  const isLast = step === 4;
+  const primaryLabel = step === 4 ? tt('common.submit') : tt('common.next');
+
+  return (
+    <div style={{ height: '100%', display: 'flex', flexDirection: 'column', background: t.bg }}>
+      <WizardHeader
+        title={tt('home.tile.timecard')}
+        subtitle={`${tt('common.step')} ${step + 1} ${tt('common.of')} ${TOTAL_STEPS}`}
+        onClose={goBack}
+      />
+      <div style={{ flex: 1, overflow: 'auto', padding: '20px 22px 130px' }}>
+        <StepDots current={step} total={TOTAL_STEPS} />
+
+        {step === 0 && (
+          <Step title={tt('tc.whichWeek')}>
+            <BigChoice
+              columns={2}
+              options={[
+                { value: nextFridayISO(), label: tt('common.thisFriday') },
+                { value: lastFridayISO(), label: tt('common.lastFriday') },
+              ]}
+              value={weekEnding}
+              onChange={setWeekEnding}
+            />
+          </Step>
+        )}
+
+        {step === 1 && (
+          <Step title={tt('tc.whichDay')}>
+            <BigChoice
+              columns={2}
+              options={DAYS.map(d => ({ value: d.full, label: d.full }))}
+              value={day}
+              onChange={setDay}
+            />
+          </Step>
+        )}
+
+        {step === 2 && (
+          <Step title={tt('tc.whichJob')}>
+            <BigChoice
+              columns={1}
+              options={RECENT_JOBS.map(j => ({
+                value: j.number,
+                label: j.name,
+                sublabel: `#${j.number}`,
+              }))}
+              value={jobNum}
+              onChange={val => {
+                const j = RECENT_JOBS.find(x => x.number === val);
+                setJobNum(val);
+                setJobName(j?.name ?? '');
+              }}
+            />
+          </Step>
+        )}
+
+        {step === 3 && (
+          <Step title={tt('tc.whichHours')}>
+            <Label text={tt('tc.timeIn')} />
+            <BigChoice
+              columns={4}
+              options={TIME_PRESETS_IN}
+              value={timeIn}
+              onChange={setTimeIn}
+            />
+            <div style={{ height: 18 }} />
+            <Label text={tt('tc.timeOut')} />
+            <BigChoice
+              columns={3}
+              options={TIME_PRESETS_OUT}
+              value={timeOut}
+              onChange={setTimeOut}
+            />
+            <div style={{ height: 18 }} />
+            <button
+              onClick={() => setLunch(!lunch)}
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: 12,
+                padding: '14px 16px',
+                width: '100%',
+                background: lunch ? t.successBg : t.card,
+                color: lunch ? t.success : t.ink,
+                border: `1.5px solid ${lunch ? t.success : t.line}`,
+                borderRadius: 14,
+                cursor: 'pointer',
+                fontSize: 15,
+                fontWeight: 700,
+                textAlign: 'left',
+              }}
+            >
+              <Coffee size={18} />
+              {lunch ? tt('tc.tookLunch') : tt('tc.noLunch')}
+              <span
+                style={{
+                  marginLeft: 'auto',
+                  fontSize: 12,
+                  fontWeight: 600,
+                  color: lunch ? t.success : t.inkLight,
+                }}
+              >
+                {lunch ? '−30 min' : ''}
+              </span>
+            </button>
+          </Step>
+        )}
+
+        {step === 4 && (
+          <Step title={tt('tc.review')}>
+            {entries.length === 0 && (
+              <div style={{ fontSize: 13.5, color: t.inkLight, textAlign: 'center', padding: 20 }}>
+                {tt('tc.empty')}
+              </div>
+            )}
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+              {entries.map((e, i) => (
+                <EntryCard key={i} entry={e} onRemove={() => removeEntry(i)} />
+              ))}
+            </div>
+            <div style={{ height: 14 }} />
+            <button
+              onClick={addAnother}
+              style={{
+                width: '100%',
+                padding: 14,
+                borderRadius: 14,
+                background: t.card,
+                border: `1.5px dashed ${t.lineStrong}`,
+                cursor: 'pointer',
+                color: t.ink,
+                fontSize: 14.5,
+                fontWeight: 700,
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                gap: 8,
+              }}
+            >
+              <Plus size={16} strokeWidth={2.5} /> {tt('tc.addDay')}
+            </button>
+            <div style={{ height: 14 }} />
+            <div
+              style={{
+                background: t.navy,
+                color: '#fff',
+                borderRadius: 14,
+                padding: 16,
+                display: 'flex',
+                justifyContent: 'space-between',
+                alignItems: 'center',
+              }}
+            >
+              <span style={{ fontSize: 13.5, fontWeight: 600 }}>{tt('tc.weekTotal')}</span>
+              <span
+                style={{
+                  fontSize: 22,
+                  fontWeight: 700,
+                  fontVariantNumeric: 'tabular-nums',
+                }}
+              >
+                {entries.reduce((s, e) => s + e.totalHours, 0).toFixed(1)} h
+              </span>
+            </div>
+          </Step>
+        )}
+      </div>
+      <WizardFooter
+        onClose={goBack}
+        primaryLabel={primaryLabel}
+        onPrimary={goNext}
+        primaryDisabled={!canNext}
+        secondaryLabel={isLast ? undefined : <>{tt('common.back')}</>}
+        onSecondary={isLast ? undefined : goBack}
+      />
+    </div>
+  );
+}
+
+function Step({ title, children }: { title: string; children: React.ReactNode }) {
+  return (
+    <>
+      <h2 style={{
+        fontSize: 22,
+        fontWeight: 700,
+        letterSpacing: '-0.02em',
+        margin: '0 0 18px 0',
+        lineHeight: 1.2,
+      }}>{title}</h2>
+      {children}
+    </>
+  );
+}
+
+function Label({ text }: { text: string }) {
+  return (
+    <div style={{
+      fontSize: 11,
+      fontWeight: 700,
+      color: t.inkMuted,
+      letterSpacing: '0.08em',
+      textTransform: 'uppercase',
+      marginBottom: 8,
+    }}>{text}</div>
+  );
+}
+
+function EntryCard({ entry, onRemove }: { entry: TimecardEntry; onRemove: () => void }) {
+  return (
+    <div style={{
+      background: t.card,
+      border: `1px solid ${t.line}`,
+      borderRadius: 14,
+      padding: 14,
+      display: 'flex',
+      alignItems: 'center',
+      gap: 12,
+    }}>
+      <div style={{ flex: 1, minWidth: 0 }}>
+        <div style={{ fontSize: 14.5, fontWeight: 700 }}>{entry.dayOfWeek}</div>
+        <div style={{ fontSize: 12, color: t.inkLight, marginTop: 2 }}>
+          {entry.jobName} · {entry.timeIn}–{entry.timeOut}
+        </div>
+      </div>
+      <div style={{ fontSize: 16, fontWeight: 700, fontVariantNumeric: 'tabular-nums' }}>
+        {entry.totalHours.toFixed(1)} h
+      </div>
+      <button
+        onClick={onRemove}
+        style={{
+          width: 30,
+          height: 30,
+          borderRadius: 8,
+          background: t.bg,
+          border: 'none',
+          cursor: 'pointer',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+        }}
+      >
+        <Trash2 size={14} color={t.inkMuted} />
+      </button>
+    </div>
+  );
+}

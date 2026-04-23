@@ -11,6 +11,7 @@ import type { WorkOrderData } from '@/lib/types/forms';
 interface Props {
   data: WorkOrderData;
   onReset: () => void;
+  embedded?: boolean;
 }
 
 const FORM_TYPE_LABEL: Record<WorkOrderData['formType'], { en: string; es: string }> = {
@@ -19,14 +20,14 @@ const FORM_TYPE_LABEL: Record<WorkOrderData['formType'], { en: string; es: strin
   'estimate': { en: 'Estimate', es: 'Estimado' },
 };
 
-export default function WorkOrderReport({ data, onReset }: Props) {
+export default function WorkOrderReport({ data, onReset, embedded }: Props) {
   const { t, lang } = useLanguage();
   const totals = calculateWorkOrderTotals(data.materials, data.labor);
   const weatherLabel = data.weather ? t(`workorder.${data.weather}`) : '—';
   const badge = FORM_TYPE_LABEL[data.formType][lang];
 
   return (
-    <ReportShell formTitle={t('workorder.title')} badge={badge} onReset={onReset}>
+    <ReportShell formTitle={t('workorder.title')} badge={badge} onReset={onReset} embedded={embedded}>
       <table className="mb-4">
         <tbody>
           <tr>
