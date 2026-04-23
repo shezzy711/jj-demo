@@ -10,10 +10,11 @@ interface ReportShellProps {
   formTitle: string;
   badge?: string;
   onReset: () => void;
+  embedded?: boolean;
   children: ReactNode;
 }
 
-export default function ReportShell({ formTitle, badge, onReset, children }: ReportShellProps) {
+export default function ReportShell({ formTitle, badge, onReset, embedded, children }: ReportShellProps) {
   const router = useRouter();
   const { t } = useLanguage();
 
@@ -23,33 +24,35 @@ export default function ReportShell({ formTitle, badge, onReset, children }: Rep
 
   return (
     <div className="flex flex-1 flex-col min-h-screen bg-background">
-      {/* Action bar (hidden in print) */}
-      <div className="no-print sticky top-0 z-10 flex items-center gap-2 border-b border-border bg-white px-4 py-3 shadow-sm">
-        <button
-          onClick={() => router.push('/')}
-          className="flex h-11 items-center gap-2 rounded-xl border-2 border-border px-4 text-sm font-semibold active:bg-gray-50"
-        >
-          <Home size={16} />
-          {t('common.home')}
-        </button>
-        <div className="flex-1 text-center text-sm font-semibold text-muted">
-          {t('report.completed')}
+      {/* Action bar (hidden in print and when embedded inside an overlay) */}
+      {!embedded && (
+        <div className="no-print sticky top-0 z-10 flex items-center gap-2 border-b border-border bg-white px-4 py-3 shadow-sm">
+          <button
+            onClick={() => router.push('/')}
+            className="flex h-11 items-center gap-2 rounded-xl border-2 border-border px-4 text-sm font-semibold active:bg-gray-50"
+          >
+            <Home size={16} />
+            {t('common.home')}
+          </button>
+          <div className="flex-1 text-center text-sm font-semibold text-muted">
+            {t('report.completed')}
+          </div>
+          <button
+            onClick={onReset}
+            className="flex h-11 items-center gap-2 rounded-xl border-2 border-border px-4 text-sm font-semibold active:bg-gray-50"
+          >
+            <RotateCcw size={16} />
+            {t('common.startOver')}
+          </button>
+          <button
+            onClick={handlePrint}
+            className="flex h-11 items-center gap-2 rounded-xl bg-primary px-4 text-sm font-semibold text-white active:bg-primary-light"
+          >
+            <Printer size={16} />
+            {t('common.print')}
+          </button>
         </div>
-        <button
-          onClick={onReset}
-          className="flex h-11 items-center gap-2 rounded-xl border-2 border-border px-4 text-sm font-semibold active:bg-gray-50"
-        >
-          <RotateCcw size={16} />
-          {t('common.startOver')}
-        </button>
-        <button
-          onClick={handlePrint}
-          className="flex h-11 items-center gap-2 rounded-xl bg-primary px-4 text-sm font-semibold text-white active:bg-primary-light"
-        >
-          <Printer size={16} />
-          {t('common.print')}
-        </button>
-      </div>
+      )}
 
       {/* Printable sheet */}
       <div className="flex-1 overflow-y-auto bg-gray-100 px-4 py-6 print:bg-white print:p-0">

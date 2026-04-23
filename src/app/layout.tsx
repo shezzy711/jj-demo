@@ -1,16 +1,17 @@
 import type { Metadata, Viewport } from "next";
-import { Geist } from "next/font/google";
+import { DM_Sans } from "next/font/google";
 import "./globals.css";
 import { LanguageProvider } from "@/lib/i18n/LanguageContext";
 
-const geistSans = Geist({
-  variable: "--font-geist-sans",
+const dmSans = DM_Sans({
+  variable: "--font-dm-sans",
   subsets: ["latin"],
+  weight: ["400", "500", "600", "700", "800"],
 });
 
 export const metadata: Metadata = {
   title: "J&J Plumbing",
-  description: "Digital forms for J&J Plumbing",
+  description: "Field-to-office workflow for J&J Plumbing — powered by Evios",
   appleWebApp: {
     capable: true,
     statusBarStyle: "black-translucent",
@@ -21,8 +22,6 @@ export const metadata: Metadata = {
 export const viewport: Viewport = {
   width: "device-width",
   initialScale: 1,
-  maximumScale: 1,
-  userScalable: false,
 };
 
 export default function RootLayout({
@@ -31,8 +30,8 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en" className={`${geistSans.variable} h-full`}>
-      <body className="min-h-full flex flex-col bg-background text-foreground antialiased">
+    <html lang="en" className={`${dmSans.variable} h-full`}>
+      <body className="min-h-full bg-background text-foreground antialiased">
         <LanguageProvider>{children}</LanguageProvider>
       </body>
     </html>

@@ -1,3 +1,83 @@
+export type ProjectId = string;
+export type EmployeeId = string;
+export type Role = 'Foreman' | 'Tech' | 'Apprentice';
+export type EmployeeStatus = 'on_site' | 'off' | 'travelling';
+
+export interface Project {
+  id: ProjectId;
+  name: string;
+  address: string;
+  siteContact: string;
+  startDate: string;
+}
+
+export interface Employee {
+  id: EmployeeId;
+  name: string;
+  role: Role;
+  mileageEligible: boolean;
+  rate: number;
+  weekHours: number;
+  weekMiles: number;
+  status: EmployeeStatus;
+  jobId: ProjectId | null;
+  clockedInAt: string | null;
+}
+
+// ─── Foreman DWO ────────────────────────────────────────────────
+export interface ParsedItem {
+  qty: number;
+  unit?: string | null;
+  name: string;
+  supplier?: string;
+  amount?: number;          // $/each, optional (DWO has it; req doesn't)
+  source?: 'shop' | 'order'; // for requisition only
+}
+
+export interface ProblemNote {
+  hasProblems: boolean;
+  note?: string;
+}
+
+export interface ForemanDWO {
+  scope: string | null;
+  materials: ParsedItem[];
+  photos: { caption: string; seed: number }[];
+  problems: ProblemNote | null;
+  customerSigned: boolean;
+  customerSkipped: boolean;
+  foremanSigned: boolean;
+  signedAt?: string;
+}
+
+export interface RequisitionState {
+  materials: ParsedItem[];
+  tools: ParsedItem[];
+  notes: string | null;
+}
+
+// ─── My Week / time edits ────────────────────────────────────────
+export interface MileageLeg {
+  day: string;          // "Mon Apr 20"
+  start: string;
+  end: string;
+  miles: number;
+  addedLater?: boolean;
+}
+
+export interface TimecardEditMap {
+  [day: string]: {
+    job?: string;
+    clockIn?: string;
+    clockOut?: string;
+    hours?: number;
+    edited?: boolean;
+    lunch?: string;
+  };
+}
+
+// ─── Old form types kept ONLY for the report components ─────────
+// (Reports are restyled but keep their existing data shape.)
 export interface TimecardEntry {
   dayOfWeek: string;
   date: string;
@@ -91,26 +171,16 @@ export interface WorkOrderData {
   problemDescription: string;
 }
 
+// Legacy demo placeholder kept (used by report components that reference it).
 export const EMPLOYEES = [
-  'John Feno',
-  'Carlos Martinez',
-  'Miguel Rodriguez',
-  'David Sanchez',
-  'James Thompson',
-  'Robert Hernandez',
-  'Luis Garcia',
-  'Jose Perez',
-  'Mark Williams',
-  'Anthony Brown',
-  'Chris Davis',
-  'Kevin Lopez',
-  'Brian Kim',
-  'Jason Nguyen',
-  'Ryan Cooper',
-  'Eric Vasquez',
-  'Steven Adams',
-  'Daniel Ortiz',
-  'Andrew Zhang',
+  'Alex Ramirez',
+  'Dave Kowalski',
+  'Miguel Santos',
+  'Tony Pham',
+  'Carlos Muñoz',
+  'Mike Delgado',
+  'Ray Chen',
+  'Jay Lucero',
   'Other',
 ];
 

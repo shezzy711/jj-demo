@@ -8,14 +8,15 @@ import type { TimecardData } from '@/lib/types/forms';
 interface Props {
   data: TimecardData;
   onReset: () => void;
+  embedded?: boolean;
 }
 
-export default function TimecardReport({ data, onReset }: Props) {
+export default function TimecardReport({ data, onReset, embedded }: Props) {
   const { t } = useLanguage();
   const total = calculateTimecardTotal(data.entries);
 
   return (
-    <ReportShell formTitle={t('timecard.title')} onReset={onReset}>
+    <ReportShell formTitle={t('timecard.title')} onReset={onReset} embedded={embedded}>
       <table className="mb-4">
         <tbody>
           <tr>
